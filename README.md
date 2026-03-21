@@ -92,7 +92,7 @@ components/
   internal/screens/      Screen registry and per-screen definitions
   internal/sidebar/      Navigation — titles are the registry keys
   internal/shared/       Shared screen kit (headers, tables, stats, dialogs)
-  ui/                    shadcn primitives
+  landing/               Embeddable playground frame for landing pages
 lib/supabase/            Supabase client, config, user, and activity tracking
 ```
 
