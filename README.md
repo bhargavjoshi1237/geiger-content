@@ -66,6 +66,7 @@ Create a `.env` file in the project root:
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key      # server-only
+STRING_URI=your-postgres-connection-string           # server-only: migrations (@geiger/orm)
 ```
 
 ### Develop
