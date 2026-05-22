@@ -116,7 +116,7 @@ then **empty** state, never bundled sample data.
 | Concern | Location | Naming |
 |---|---|---|
 | Base browser client (auth + fetch tracking) | `lib/supabase/client.js` | `createClient()` |
-| **Shared guard / config helper** (imported everywhere) | `lib/supabase/events.js` today; ideally `supabase/components/events-client.js` | `isSupabaseConfigured()` |
+| **Shared guard / config helper** (imported everywhere) | `supabase/components/content-client.js` | `isSupabaseConfigured()`, `contentClient()`, `publicClient()` |
 | Data-access layer (one per area) | `lib/supabase/<area>.js` | `list*/get*/create*/update*/softDelete*`, `normalize*`, `toRow` |
 | Storage helpers | `lib/supabase/storage.js` | `uploadEventImage`, `buildPublicUrl`, `eventMediaPrefix` |
 | SQL schema / policies | `supabase/migrations/<version>_<name>.sql` | `@up`/`@down`, **idempotent** DDL — see `MIGRATION_CONVENTIONS.md` |
