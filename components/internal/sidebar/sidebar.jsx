@@ -17,6 +17,8 @@ import { SidebarOption } from "./sidebar_option";
 import { workspaceNav } from "./sidebar_nav";
 import { Button } from "@/components/ui/button";
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 function MobileSidebarHeader() {
   const { isMobile, toggleSidebar } = useSidebar();
 
@@ -30,7 +32,7 @@ function MobileSidebarHeader() {
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded flex items-center justify-center shrink-0">
             <img
-              src="/logo1.svg"
+              src={`${basePath}/logo1.svg`}
               alt=""
               className="geiger-logo w-5 h-5"
               onError={(e) => {

@@ -12,6 +12,8 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { NotificationsDropdown } from "./dialogue/notifications_dropdown";
 import { ProfileDropdown } from "./dialogue/profile_dropdown";
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 export function Topbar() {
   return (
     <header className="relative h-14 px-4 flex items-center justify-between border-b border-topbar-border bg-topbar-bg backdrop-blur-md text-foreground z-20 w-full shrink-0">
@@ -19,7 +21,7 @@ export function Topbar() {
         <SidebarTrigger className="md:hidden -ml-2 text-foreground" />
         <div className="hidden w-8 h-8 rounded items-center justify-center shrink-0 md:flex md:-ml-1.5">
           <img
-            src="/logo1.svg"
+            src={`${basePath}/logo1.svg`}
             alt=""
             className="geiger-logo w-5 h-5 -mr-0.5"
             onError={(e) => {
@@ -36,7 +38,7 @@ export function Topbar() {
 
       <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 md:hidden">
         <img
-          src="/logo1.svg"
+          src={`${basePath}/logo1.svg`}
           alt=""
           className="geiger-logo h-5 w-5"
           onError={(e) => {
