@@ -77,7 +77,11 @@ npm run dev
 
 Local routes:
 
-- `/` and `/project/[projectId]` — the content workspace
+- `/` — landing page
+- `/project` — opens your last-used project
+- `/project/[projectId]` — the content workspace
+- `/c/<id>` — public page for a published entry
+- `/playground` — in-memory workspace playground (embedded on the landing page)
 - `/pallet` — dark palette reference
 - `/palletw` — light palette reference
 
