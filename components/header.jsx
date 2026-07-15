@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { MegaMenu } from "@/components/mega-menu";
+import { SuiteMegaMenu } from "@/components/landing/suite-mega-menu";
 import Logo from "@/components/ui/logo";
 
 export function Header() {
@@ -13,10 +13,10 @@ export function Header() {
           </div>
           <span className="truncate font-bold text-sm tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-foreground to-muted-foreground sm:text-md">Geiger Studios</span>
         </div>
-        <MegaMenu />
+        <SuiteMegaMenu />
         <div className="hidden items-center gap-4 md:flex">
           <Link
-            href="/home"
+            href="/project"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Open Content

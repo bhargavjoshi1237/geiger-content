@@ -16,6 +16,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Header } from "@/components/header";
+import ContentPlaygroundShowcase from "@/components/ContentPlaygroundShowcase";
 
 export const metadata = {
   title: "Content - Geiger Studio",
@@ -106,13 +107,17 @@ export default function ContentLandingPage() {
               workflows together so work stays easy to find and ready to use.
             </p>
             <Link
-              href="/home"
+              href="/project"
               className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 sm:text-base"
             >
               Open Content
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
+        </section>
+
+        <section className="mt-10 w-full sm:mt-16">
+          <ContentPlaygroundShowcase />
         </section>
 
         <section className="mx-auto mt-10 grid w-full max-w-6xl gap-4 px-4 sm:mt-20 sm:px-6 md:grid-cols-3">
@@ -162,7 +167,7 @@ export default function ContentLandingPage() {
             </h2>
             <div className="flex w-full max-w-md flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
               <Link
-                href="/home"
+                href="/project"
                 className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 sm:w-auto"
               > Open Content
                 <ArrowRight className="h-4 w-4" />

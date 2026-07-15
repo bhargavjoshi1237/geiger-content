@@ -24,7 +24,7 @@ export default function Footer() {
             <h4 className="font-bold text-foreground mb-4">Products</h4>
             <ul className="space-y-3">
               <li><a href="/flow" className="hover:text-foreground transition-colors text-muted-foreground text-sm">Geiger Flow</a></li>
-              <li><Link href="/home" className="hover:text-foreground transition-colors text-muted-foreground text-sm">Geiger Content</Link></li>
+              <li><Link href="/project" className="hover:text-foreground transition-colors text-muted-foreground text-sm">Geiger Content</Link></li>
               <li><a href="#" className="hover:text-foreground transition-colors text-muted-foreground text-sm">Geiger DAM</a></li>
               <li><a href="#" className="hover:text-foreground transition-colors text-muted-foreground text-sm">Geiger Grey</a></li>
               <li><a href="#" className="hover:text-foreground transition-colors text-muted-foreground text-sm">Geiger Enterprise</a></li>

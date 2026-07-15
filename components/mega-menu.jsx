@@ -46,7 +46,7 @@ export function MegaMenu() {
       icon: Zap,
       label: "Content",
       description: "Create and organize content.",
-      href: "/home",
+      href: "/project",
       internalLink: true,
     },
     {
@@ -198,7 +198,7 @@ export function MegaMenu() {
 
                 <SheetClose asChild>
                   <Link
-                    href="/home"
+                    href="/project"
                     className="inline-flex w-full items-center justify-center rounded-lg border border-border bg-transparent px-4 py-2 text-sm font-medium text-foreground"
                   >
                     Open Content
