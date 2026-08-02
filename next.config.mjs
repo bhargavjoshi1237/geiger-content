@@ -3,6 +3,7 @@ const basePath = isProd ? "/content" : "";
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+  transpilePackages: ["@geiger/ui"],
   basePath,
   allowedDevOrigins: ["127.0.0.1"],
   env: {
