@@ -184,3 +184,10 @@ export function useProject() {
   }
   return ctx;
 }
+
+// Safe anywhere: returns null outside a ProjectProvider so shared components
+// render on surfaces that have no active project.
+export function useOptionalProject() {
+  const ctx = useContext(ProjectContext);
+  return ctx === undefined ? null : ctx;
+}

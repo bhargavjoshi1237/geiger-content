@@ -9,6 +9,7 @@ import { getScreen } from "@/components/internal/screens/registry";
 import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { ProjectProvider } from "@/context/project-context";
+import { RbacProvider } from "@/context/rbac-context";
 
 // The project-scoped Content workspace. Mirrors geiger-events'
 // /project/[projectId]/[[...rest]] shell: Topbar + Sidebar + the active screen,
@@ -56,7 +57,8 @@ function WorkspaceContent() {
 
 export default function ProjectWorkspacePage() {
   // ProjectProvider reads the URL (useWorkspaceUrl) so it needs a Suspense
-  // boundary, matching the suite shell.
+  // boundary, matching the suite shell. RbacProvider sits inside it — it
+  // resolves the active project the same way.
   return (
     <Suspense
       fallback={
@@ -64,7 +66,9 @@ export default function ProjectWorkspacePage() {
       }
     >
       <ProjectProvider>
-        <WorkspaceContent />
+        <RbacProvider>
+          <WorkspaceContent />
+        </RbacProvider>
       </ProjectProvider>
     </Suspense>
   );
