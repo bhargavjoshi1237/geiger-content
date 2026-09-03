@@ -5,7 +5,10 @@ import { AppSidebar } from "@/components/internal/sidebar/sidebar";
 import { Topbar } from "@/components/internal/topbar/topbar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ComingSoonScreen } from "@/components/internal/screens/coming_soon";
-import { getScreen } from "@/components/internal/screens/registry";
+import {
+  getScreen,
+  getScreenComponent,
+} from "@/components/internal/screens/registry";
 import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";
 import { ProjectProvider } from "@/context/project-context";
 
@@ -15,7 +18,7 @@ import { ProjectProvider } from "@/context/project-context";
 // state here (not the URL) — it's a throwaway, fully interactive instance of the
 // real interface. No save, no load.
 function ContentPlaygroundContent() {
-  const [currentTab, setCurrentTab] = useState("Overview");
+  const [currentTab, setCurrentTab] = useState("All Content");
 
   const findActiveItem = () => {
     for (const item of workspaceNav) {
@@ -28,6 +31,7 @@ function ContentPlaygroundContent() {
 
   const activeItem = findActiveItem();
   const screen = getScreen(activeItem.title);
+  const screenComponent = getScreenComponent(activeItem.title);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background font-sans text-foreground selection:bg-surface-strong">
@@ -44,7 +48,9 @@ function ContentPlaygroundContent() {
               aria-label={`${activeItem.title} workspace`}
               className="relative z-10 min-w-0 flex-1 overflow-y-auto p-4 md:p-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              <ComingSoonScreen {...screen} />
+              {screenComponent
+                ? React.createElement(screenComponent)
+                : React.createElement(ComingSoonScreen, screen)}
             </main>
           </SidebarInset>
         </div>

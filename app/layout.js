@@ -3,6 +3,7 @@ import "./globals.css";
 
 import { SystemFavicon } from "@/components/system-favicon";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@geiger/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +36,7 @@ export default function RootLayout({ children }) {
           disableTransitionOnChange
         >
           {children}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

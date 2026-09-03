@@ -5,7 +5,7 @@ import { AppSidebar } from "@/components/internal/sidebar/sidebar";
 import { Topbar } from "@/components/internal/topbar/topbar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ComingSoonScreen } from "@/components/internal/screens/coming_soon";
-import { getScreen } from "@/components/internal/screens/registry";
+import { getScreen, getScreenComponent } from "@/components/internal/screens/registry";
 import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { ProjectProvider } from "@/context/project-context";
@@ -30,6 +30,7 @@ function WorkspaceContent() {
 
   const activeItem = findActiveItem();
   const screen = getScreen(activeItem.title);
+  const screenComponent = getScreenComponent(activeItem.title);
 
   return (
     <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-background font-sans text-foreground selection:bg-surface-strong">
@@ -46,7 +47,9 @@ function WorkspaceContent() {
               aria-label={`${activeItem.title} workspace`}
               className="relative z-10 min-w-0 flex-1 overflow-y-auto p-4 md:p-8"
             >
-              <ComingSoonScreen {...screen} />
+              {screenComponent
+                ? React.createElement(screenComponent)
+                : React.createElement(ComingSoonScreen, screen)}
             </main>
           </SidebarInset>
         </div>
