@@ -8,6 +8,17 @@ import { AssetsScreen } from "@/components/internal/screens/content/assets";
 import { SlotsScreen } from "@/components/internal/screens/content/slots";
 import { ScheduledScreen } from "@/components/internal/screens/content/scheduled";
 import { ArchivedScreen } from "@/components/internal/screens/content/archived";
+import { ContentPerformanceScreen } from "@/components/internal/screens/intelligence/content_performance";
+import { AudiencePerformanceScreen } from "@/components/internal/screens/intelligence/audience_performance";
+import { FunnelsJourneysScreen } from "@/components/internal/screens/intelligence/funnels_journeys";
+import { TopicInterestScreen } from "@/components/internal/screens/intelligence/topic_interest";
+import { SemanticSearchScreen } from "@/components/internal/screens/intelligence/semantic_search";
+import { AiTagSuggestionsScreen } from "@/components/internal/screens/intelligence/ai_tag_suggestions";
+import { EmbeddingsScreen } from "@/components/internal/screens/intelligence/embeddings";
+import { DuplicateDetectionScreen } from "@/components/internal/screens/intelligence/duplicate_detection";
+import { ContentGapsScreen } from "@/components/internal/screens/intelligence/content_gaps";
+import { KnowledgeGraphScreen } from "@/components/internal/screens/intelligence/knowledge_graph";
+import { DecisionExplanationsScreen } from "@/components/internal/screens/intelligence/decision_explanations";
 
 function createScreenDefinition(title) {
   const [description, details] = getScreenContent(title);
@@ -34,6 +45,17 @@ const COMPONENT_REGISTRY = {
   "Content Slots": SlotsScreen,
   Scheduled: ScheduledScreen,
   Archived: ArchivedScreen,
+  "Content Performance": ContentPerformanceScreen,
+  "Audience Performance": AudiencePerformanceScreen,
+  "Funnels & Journeys": FunnelsJourneysScreen,
+  "Topic Interest": TopicInterestScreen,
+  "Semantic Search": SemanticSearchScreen,
+  "AI Tag Suggestions": AiTagSuggestionsScreen,
+  Embeddings: EmbeddingsScreen,
+  "Duplicate Detection": DuplicateDetectionScreen,
+  "Content Gaps": ContentGapsScreen,
+  "Knowledge Graph": KnowledgeGraphScreen,
+  "Decision Explanations": DecisionExplanationsScreen,
 };
 
 export const SCREEN_REGISTRY = Object.fromEntries(
