@@ -8,11 +8,11 @@ import { EditorShell } from "@/components/internal/shared/editor_shell";
 import { Button } from "@geiger/ui/button";
 
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
-import { CONTENT_STATUS_MAP, formatDate } from "./sample_data";
+import { CONTENT_STATUS_MAP, formatDate } from "./constants";
 import { NAV_GROUPS, SECTIONS } from "./content_sections";
 import { updateContent } from "@/lib/supabase/content";
 
-export function ContentDetailScreen({ content, onBack, onUpdate }) {
+export function ContentDetailScreen({ content, backLabel, onBack, onUpdate }) {
   const { section: active, setSection: setActive } = useWorkspaceUrl();
   const [form, setForm] = useState(content);
   const [seedId, setSeedId] = useState(content?.id);
@@ -31,10 +31,14 @@ export function ContentDetailScreen({ content, onBack, onUpdate }) {
     onUpdate?.(next);
   };
 
-  const save = () => {
+  const save = async () => {
     const next = { ...form };
-    onUpdate?.(next);
-    updateContent(form.id, next);
+    const saved = await updateContent(form.id, next);
+    if (!saved) {
+      toast.error("Couldn't save your changes to the server.");
+      return;
+    }
+    onUpdate?.(saved);
     toast.success("Changes saved.");
   };
 
@@ -51,7 +55,7 @@ export function ContentDetailScreen({ content, onBack, onUpdate }) {
   return (
     <EditorShell
       searchable
-      back={{ label: "All Content", onClick: onBack }}
+      back={{ label: backLabel || "All Content", onClick: onBack }}
       title={form.title}
       status={form.status}
       statusMap={CONTENT_STATUS_MAP}

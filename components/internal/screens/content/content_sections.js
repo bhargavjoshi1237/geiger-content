@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@geiger/ui/select";
-import { CONTENT_STATUS_MAP, CONTENT_TYPE_MAP } from "./sample_data";
+import { CONTENT_STATUS_MAP, CONTENT_TYPE_MAP } from "./constants";
 
 function OverviewSection({ content, onPatch }) {
   const patch = onPatch || (() => {});
@@ -153,23 +153,35 @@ function VisibilitySection({ content, onPatch }) {
   return (
     <div className="space-y-6">
       <SectionCard title="Visibility">
-        <Field label="Status">
-          <Select
-            value={content?.status || "Draft"}
-            onValueChange={(v) => patch({ status: v })}
+        <div className="grid gap-4">
+          <Field label="Status">
+            <Select
+              value={content?.status || "Draft"}
+              onValueChange={(v) => patch({ status: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.keys(CONTENT_STATUS_MAP).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field
+            label="Scheduled date"
+            hint="Used by the Scheduled view. Set a date to queue this entry for future publication."
           >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.keys(CONTENT_STATUS_MAP).map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
+            <Input
+              type="date"
+              value={String(content?.scheduledAt || "").slice(0, 10)}
+              onChange={(e) => patch({ scheduledAt: e.target.value || null })}
+            />
+          </Field>
+        </div>
       </SectionCard>
     </div>
   );
