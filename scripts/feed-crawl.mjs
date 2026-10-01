@@ -4,7 +4,8 @@
 //   node scripts/feed-crawl.mjs report                     # coverage report (no network)
 //   node scripts/feed-crawl.mjs plan                       # tree + budget summary (no network)
 // Flags: --per 25 --floor 2025-01-01 --phase scan|search|all --scan-pages 20
-//        --dedicated-pages 150 --search-pages 6 --interval-ms 1200 --dir data/feed-corpus
+//        --dedicated-pages 150 --search-pages 6 --dry-pages 12 --deep --interval-ms 1200 --dir data/feed-corpus
+// Breadth first by default: a subreddit pauses after --dry-pages unproductive pages; --deep digs the long tail.
 import { createArcticClient } from "../lib/feed/crawl/arctic.mjs";
 import { buildReport, resolveFloor, runCollect, runGraph } from "../lib/feed/crawl/crawler.mjs";
 import { DEFAULT_CORPUS_DIR, openStore } from "../lib/feed/crawl/store.mjs";
@@ -88,6 +89,8 @@ try {
       scanPages: num("scan-pages", 20),
       dedicatedPages: num("dedicated-pages", 150),
       searchPages: num("search-pages", 6),
+      dryPages: num("dry-pages", 12),
+      deep: args.includes("--deep"),
       phases: phase === "all" ? ["scan", "search"] : [phase],
       log,
     });
