@@ -90,6 +90,7 @@ import { ContentRankScreen } from "@/components/internal/screens/recommendations
 import { CollabRankScreen } from "@/components/internal/screens/recommendations/collab_rank";
 import { ContextRankScreen } from "@/components/internal/screens/recommendations/context_rank";
 import { DiversityScreen } from "@/components/internal/screens/recommendations/diversity";
+import { FeedLabScreen } from "@/components/internal/screens/recommendations/feed_lab";
 import { BusinessScreen } from "@/components/internal/screens/recommendations/business";
 import { RealtimeScreen } from "@/components/internal/screens/recommendations/realtime";
 import { ContentPerformanceScreen } from "@/components/internal/screens/intelligence/content_performance";
@@ -218,6 +219,7 @@ const COMPONENT_REGISTRY = {
   "Collaborative Ranking": CollabRankScreen,
   "Context-aware Ranking": ContextRankScreen,
   "Diversity Controls": DiversityScreen,
+  "Feed Lab": FeedLabScreen,
   "Business Rules": BusinessScreen,
   "Real-time Ranking": RealtimeScreen,
   "Content Performance": ContentPerformanceScreen,

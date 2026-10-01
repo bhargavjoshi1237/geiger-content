@@ -21,7 +21,13 @@
     "test:vector": "node --test tests/vector*.test.mjs",
     "test:delivery": "node --test tests/delivery.test.mjs tests/operations-validation.test.mjs tests/rls-migration.test.mjs",
     "verify:rls": "node scripts/verify-rls.mjs",
-    "verify:delivery": "node scripts/verify-public.mjs"
+    "verify:delivery": "node scripts/verify-public.mjs",
+    "feed:plan": "node scripts/feed-crawl.mjs plan",
+    "feed:graph": "node scripts/feed-crawl.mjs graph",
+    "feed:crawl": "node scripts/feed-crawl.mjs collect",
+    "feed:report": "node scripts/feed-crawl.mjs report",
+    "feed:simulate": "node scripts/feed-simulate.mjs",
+    "test:feed": "node --test tests/feed-*.test.mjs"
   },
   "dependencies": {
     "@geiger/orm": "github:bhargavjoshi1237/geiger-orm#master",

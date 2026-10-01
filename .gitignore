@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# feed corpus crawl output (manifests, state, reports)
+/data/feed-corpus/
