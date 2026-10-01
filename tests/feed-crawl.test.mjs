@@ -103,6 +103,25 @@ test("client retries rate limits using the reset header, then enforces its reque
   await assert.rejects(client.searchPosts({ subreddit: "a" }), BudgetExhausted);
 });
 
+test("a failing page leaves the scan resumable instead of crashing the run", async () => {
+  const dir = tmp();
+  const topics = loadTaxonomy().filter((t) => t.id === "pc-building");
+  let hydrateCalls = 0;
+  const client = {
+    stats: { requests: 0, waits: 0, waitedMs: 0 },
+    subredditInfo: async (name) => ({ display_name: name, subscribers: 5, allow_images: true, submission_type: "any" }),
+    searchPosts: async ({ subreddit }) => [{ id: `x-${subreddit}`, title: "first custom loop", subreddit, author: "u", created_utc: 1790000000, url: "https://i.redd.it/x.jpg" }],
+    postsByIds: async () => { hydrateCalls += 1; throw new Error("/api/posts/ids 0: network down"); },
+  };
+  const store = openStore(dir);
+  const result = await runCollect({ client, store, topics, per: 25, phases: ["scan"], scanPages: 1, dedicatedPages: 1 });
+  assert.ok(hydrateCalls > 0);
+  assert.ok(result.errors.length > 0);
+  const cursor = store.cursor("scan:watercooling");
+  assert.equal(cursor.done, false, "scan stays resumable");
+  assert.equal(cursor.pages, 0, "the failed page is retried next run");
+});
+
 test("collect assigns, hydrates and persists posts, and resumes from the manifest", async () => {
   const dir = tmp();
   const [topic] = parseTaxonomy(`
