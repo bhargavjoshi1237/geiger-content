@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   PackageOpen,
   Copy,
   ExternalLink,
-  Loader2,
+  Link2,
   Pencil,
   Plus,
   Trash2,
+  Upload,
+  X,
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
@@ -17,6 +19,7 @@ import {
   ListPagination,
   usePagination,
 } from "@/components/internal/shared/pagination";
+import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
   EmptyState,
@@ -61,9 +64,11 @@ import {
   softDeleteAsset,
   updateAsset,
 } from "@/lib/supabase/assets";
+import { removeAsset, uploadAsset } from "@/lib/supabase/storage";
 import { getUser } from "@/lib/supabase/user";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
+import { useCan } from "@/context/rbac-context";
 import { AssetDetailScreen } from "./asset_detail";
 
 const TYPE_FILTER_OPTIONS = [
@@ -74,26 +79,73 @@ const TYPE_FILTER_OPTIONS = [
   })),
 ];
 
-function CreateAssetDialog({ open, onOpenChange, onCreate }) {
+function CreateAssetDialog({ open, onOpenChange, onCreate, onCreateWithFile }) {
+  const [mode, setMode] = useState("upload");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [fileType, setFileType] = useState("image");
   const [folder, setFolder] = useState("");
+  const [file, setFile] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const fileInputRef = useRef(null);
 
-  const submit = () => {
+  const pickFile = (next) => {
+    if (!next) return;
+    setFile(next);
+    if (next.type?.startsWith("image/")) setFileType("image");
+    else if (next.type?.startsWith("video/")) setFileType("video");
+    else if (next.type?.startsWith("audio/")) setFileType("audio");
+    else if (next.type === "application/pdf") setFileType("document");
     if (!name.trim()) {
-      toast.error("Give your asset a name first.");
-      return;
+      setName(
+        String(next.name || "")
+          .replace(/\.[^.]+$/, "")
+          .replace(/[-_]+/g, " ")
+          .trim(),
+      );
     }
-    if (!url.trim()) {
-      toast.error("Add a file URL first.");
-      return;
-    }
-    onCreate({ name: name.trim(), url: url.trim(), fileType, folder });
+  };
+
+  const reset = () => {
     setName("");
     setUrl("");
     setFileType("image");
     setFolder("");
+    setFile(null);
+    setDragOver(false);
+    setBusy(false);
+  };
+
+  const submit = async () => {
+    if (busy) return;
+    if (!name.trim()) {
+      toast.error("Give your asset a name first.");
+      return;
+    }
+    if (mode === "url") {
+      if (!url.trim()) {
+        toast.error("Add a file URL first.");
+        return;
+      }
+      onCreate({ name: name.trim(), url: url.trim(), fileType, folder });
+      reset();
+      onOpenChange(false);
+      return;
+    }
+    if (!file) {
+      toast.error("Choose a file to upload first.");
+      return;
+    }
+    setBusy(true);
+    await onCreateWithFile({
+      name: name.trim(),
+      folder,
+      fileType,
+      file,
+    });
+    setBusy(false);
+    reset();
     onOpenChange(false);
   };
 
@@ -108,6 +160,32 @@ function CreateAssetDialog({ open, onOpenChange, onCreate }) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant={mode === "upload" ? "default" : "outline"}
+              className={
+                mode === "upload"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              }
+              onClick={() => setMode("upload")}
+            >
+              <Upload className="h-4 w-4" /> Upload
+            </Button>
+            <Button
+              type="button"
+              variant={mode === "url" ? "default" : "outline"}
+              className={
+                mode === "url"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              }
+              onClick={() => setMode("url")}
+            >
+              <Link2 className="h-4 w-4" /> URL
+            </Button>
+          </div>
           <Field label="Name">
             <Input
               value={name}
@@ -122,13 +200,94 @@ function CreateAssetDialog({ open, onOpenChange, onCreate }) {
               autoFocus
             />
           </Field>
-          <Field label="File URL">
-            <Input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://…"
-            />
-          </Field>
+          {mode === "upload" ? (
+            <Field label="File">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => fileInputRef.current?.click()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  pickFile(e.dataTransfer.files?.[0]);
+                }}
+                className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-8 text-center transition-colors ${
+                  dragOver
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-surface-subtle hover:bg-surface-active"
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => pickFile(e.target.files?.[0])}
+                />
+                {file ? (
+                  <>
+                    <span className="text-sm font-medium text-foreground">
+                      {file.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatBytes(file.size)}
+                      {file.type ? ` · ${file.type}` : ""}
+                    </span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFile(null);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setFile(null);
+                          if (fileInputRef.current)
+                            fileInputRef.current.value = "";
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" /> Choose a different file
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      Drop a file here or click to browse
+                    </span>
+                    <span className="text-xs text-text-tertiary">
+                      Images, video, or PDF
+                    </span>
+                  </>
+                )}
+              </div>
+            </Field>
+          ) : (
+            <Field label="File URL">
+              <Input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://…"
+              />
+            </Field>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <Field label="Type">
               <Select value={fileType} onValueChange={setFileType}>
@@ -164,8 +323,9 @@ function CreateAssetDialog({ open, onOpenChange, onCreate }) {
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={submit}
+            disabled={busy}
           >
-            Add asset
+            {busy ? "Uploading…" : mode === "upload" ? "Upload asset" : "Add asset"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -183,6 +343,8 @@ export function AssetsScreen() {
   const { assetId, openAsset, closeAsset } = useWorkspaceUrl();
   const { projectId } = useProject();
   const [userId, setUserId] = useState(null);
+  // Advisory gating: hidden for roles without the upload capability.
+  const canCreate = useCan("content.asset.upload");
 
   const selected = useMemo(
     () => (assetId ? rows.find((r) => r.id === assetId) || null : null),
@@ -252,6 +414,62 @@ export function AssetsScreen() {
     }
     setRows((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
     toast.success(`"${saved.name}" added.`);
+  };
+
+  const handleCreateWithFile = async ({ name, folder, fileType: ft, file }) => {
+    if (!file) {
+      toast.error("Choose a file to upload first.");
+      return;
+    }
+    const id = newId();
+    const inferred = file.type?.startsWith("image/")
+      ? "image"
+      : file.type?.startsWith("video/")
+        ? "video"
+        : file.type?.startsWith("audio/")
+          ? "audio"
+          : "other";
+    const optimistic = {
+      id,
+      name,
+      folder: folder || "",
+      fileType: ft || inferred,
+      mime: file.type || "",
+      sizeBytes: file.size || 0,
+      url: "",
+      alt: "",
+      status: "Processing",
+      createdBy: userId,
+      projectId,
+    };
+    setRows((prev) => [optimistic, ...prev]);
+    const uploaded = await uploadAsset({
+      projectId,
+      assetId: id,
+      file,
+      userId,
+    });
+    if (!uploaded) {
+      setRows((prev) => prev.filter((r) => r.id !== optimistic.id));
+      toast.error("Upload failed. Check the file and try again.");
+      return;
+    }
+    const saved = await createAsset({
+      ...optimistic,
+      url: uploaded.publicUrl,
+      mime: uploaded.mime,
+      sizeBytes: uploaded.sizeBytes,
+      contentHash: uploaded.contentHash,
+      status: "Ready",
+    });
+    if (!saved) {
+      setRows((prev) => prev.filter((r) => r.id !== optimistic.id));
+      await removeAsset(uploaded.path);
+      toast.error("Couldn't save the asset to the server.");
+      return;
+    }
+    setRows((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
+    toast.success(`"${saved.name}" uploaded.`);
   };
 
   const handleUpdate = async (updated) => {
@@ -370,12 +588,14 @@ export function AssetsScreen() {
         title="Assets"
         description="Images, video, documents, and other media used by entries — with folders, metadata, and usage references."
         actions={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="h-4 w-4" /> Add asset
-          </Button>
+          canCreate ? (
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="h-4 w-4" /> Add asset
+            </Button>
+          ) : null
         }
       />
 
@@ -398,10 +618,7 @@ export function AssetsScreen() {
       </Toolbar>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading Assets…
-        </div>
+        <TableSkeleton columns={columns} />
       ) : (
         <div className="space-y-5">
           <DataTable
@@ -420,12 +637,14 @@ export function AssetsScreen() {
                       : "Add your first asset to start building the media library."
                   }
                   action={
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                      onClick={() => setCreateOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" /> Add asset
-                    </Button>
+                    canCreate ? (
+                      <Button
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={() => setCreateOpen(true)}
+                      >
+                        <Plus className="h-4 w-4" /> Add asset
+                      </Button>
+                    ) : null
                   }
                 />
               </div>
@@ -439,6 +658,7 @@ export function AssetsScreen() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreate={handleCreate}
+        onCreateWithFile={handleCreateWithFile}
       />
 
       <Dialog

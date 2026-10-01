@@ -4,8 +4,14 @@ import { Download, TrendingUp } from "lucide-react";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { DataTable, ScreenHeader, SectionCard, StatsBar } from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { AUDIENCE_PERFORMANCE } from "./demo_data";
+import {
+  FALLBACK_AUDIENCE,
+  buildAudiencePerformance,
+  useLiveAnalytics,
+  useTraitMaps,
+} from "./live_data";
 import {
   Bar,
   BarChart,
@@ -25,9 +31,27 @@ import {
   YAxis,
 } from "./charts";
 
+const DEFAULT_TREND_SERIES = [
+  { key: "marketers", label: "Marketers" },
+  { key: "developers", label: "Developers" },
+  { key: "ecommerce", label: "Ecommerce" },
+];
+
 export function AudiencePerformanceScreen() {
   const [range, setRange] = useState("30d");
-  const d = AUDIENCE_PERFORMANCE;
+  const { loading, live, events, profiles, segments } = useLiveAnalytics();
+  const traitMaps = useTraitMaps(live ? profiles : []);
+  const mapsLoading = live && profiles.length > 0 && !traitMaps;
+  const dataset =
+    live && !mapsLoading
+      ? buildAudiencePerformance({ profiles, events, segments, traitMaps })
+      : null;
+  const d = dataset ?? FALLBACK_AUDIENCE;
+  const sample = !loading && !mapsLoading && !dataset;
+  const series = d.trendSeries || DEFAULT_TREND_SERIES;
+  const trendConfig = Object.fromEntries(
+    series.map((s, i) => [s.key, { label: s.label, color: CHART_COLORS[i % CHART_COLORS.length] }]),
+  );
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -35,6 +59,7 @@ export function AudiencePerformanceScreen() {
         description="Engagement and outcomes compared across reusable audience groups."
         actions={
           <>
+            {sample ? <Badge variant="neutral">Sample data</Badge> : null}
             <FilterDropdown value={range} onValueChange={setRange} options={RANGE_OPTIONS} height="h-9" />
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Download className="h-4 w-4" /> Export
@@ -46,11 +71,7 @@ export function AudiencePerformanceScreen() {
       <div className="grid gap-4 lg:grid-cols-3">
         <SectionCard title="Engaged users by persona" description="Weekly active engagement per core segment." className="lg:col-span-2">
           <ChartContainer
-            config={{
-              marketers: { label: "Marketers", color: CHART_COLORS[0] },
-              developers: { label: "Developers", color: CHART_COLORS[1] },
-              ecommerce: { label: "Ecommerce", color: CHART_COLORS[2] },
-            }}
+            config={trendConfig}
             className="h-[300px] w-full"
           >
             <LineChart data={d.trend} margin={{ left: -12, right: 8, top: 8 }}>
@@ -58,9 +79,9 @@ export function AudiencePerformanceScreen() {
               <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Line type="monotone" dataKey="marketers" stroke="var(--color-marketers)" strokeWidth={2.5} dot={false} />
-              <Line type="monotone" dataKey="developers" stroke="var(--color-developers)" strokeWidth={2.5} dot={false} />
-              <Line type="monotone" dataKey="ecommerce" stroke="var(--color-ecommerce)" strokeWidth={2.5} dot={false} />
+              {series.map((s) => (
+                <Line key={s.key} type="monotone" dataKey={s.key} stroke={`var(--color-${s.key})`} strokeWidth={2.5} dot={false} />
+              ))}
             </LineChart>
           </ChartContainer>
         </SectionCard>

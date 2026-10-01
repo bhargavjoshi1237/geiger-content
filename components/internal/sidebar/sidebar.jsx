@@ -11,11 +11,13 @@ import {
   SidebarMenu,
   SidebarRail,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from "@geiger/ui/sidebar";
 import { PanelLeft } from "lucide-react";
 import { SidebarOption } from "./sidebar_option";
 import { workspaceNav } from "./sidebar_nav";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
+import { useRbac } from "@/context/rbac-context";
+import { tabPermissionKey } from "@/lib/rbac";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
@@ -55,6 +57,39 @@ export function AppSidebar({
 }) {
   const { toggleSidebar } = useSidebar();
   const [expandedItems, setExpandedItems] = React.useState({});
+  const { can, roles } = useRbac();
+
+  // Advisory UI-gating only (real denial of data is per-table RLS): hide a
+  // destination when the signed-in user lacks its view key. Default-open when
+  // no roles are configured, so the workspace stays reachable in the demo and
+  // before the first grant lands. While grants load, can() itself stays
+  // permissive so nav never flashes empty on a project switch.
+  //
+  // Nav keys gate a whole sidebar SECTION (content.<section>.view — see
+  // geiger-rbac.config.js). evaluate() fails closed on unknown keys, so
+  // sub-items must NOT be gated by their own derived key (e.g.
+  // content.webhooks.view is unknown → deny → emptied sections even for
+  // Owners). Sub-items inherit their parent section's key instead; the
+  // section row itself stays on its own key.
+  const visibleNav = React.useMemo(() => {
+    const allowed = (title) => {
+      if (!roles || roles.length === 0) return true;
+      try {
+        return can(tabPermissionKey(title));
+      } catch {
+        return true;
+      }
+    };
+    return workspaceNav
+      .map((item) => {
+        if (!item.subItems) {
+          return allowed(item.title) ? item : null;
+        }
+        if (!allowed(item.title)) return null;
+        return item;
+      })
+      .filter(Boolean);
+  }, [can, roles]);
 
   const toggleExpand = (title) => {
     setExpandedItems((current) => ({
@@ -73,7 +108,7 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {workspaceNav.map((item) => (
+              {visibleNav.map((item) => (
                 <SidebarOption
                   key={item.title}
                   title={item.title}

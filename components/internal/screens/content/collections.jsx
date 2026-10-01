@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   FolderKanban,
   Copy,
-  Loader2,
   Pencil,
   Plus,
   Trash2,
@@ -16,6 +15,7 @@ import {
   ListPagination,
   usePagination,
 } from "@/components/internal/shared/pagination";
+import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
   EmptyState,
@@ -61,6 +61,7 @@ import {
 import { getUser } from "@/lib/supabase/user";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
+import { useCan } from "@/context/rbac-context";
 import { CollectionDetailScreen } from "./collection_detail";
 
 const STATUS_FILTER_OPTIONS = [
@@ -147,6 +148,8 @@ export function CollectionsScreen() {
   const { collectionId, openCollection, closeCollection } = useWorkspaceUrl();
   const { projectId } = useProject();
   const [userId, setUserId] = useState(null);
+  // Advisory gating: hidden for roles without the manage capability.
+  const canCreate = useCan("content.collection.manage");
 
   const selected = useMemo(
     () =>
@@ -346,12 +349,14 @@ export function CollectionsScreen() {
         title="Collections"
         description="Group related entries into reusable, queryable sets with manual ordering and delivery settings."
         actions={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="h-4 w-4" /> Create collection
-          </Button>
+          canCreate ? (
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="h-4 w-4" /> Create collection
+            </Button>
+          ) : null
         }
       />
 
@@ -374,10 +379,7 @@ export function CollectionsScreen() {
       </Toolbar>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading Collections…
-        </div>
+        <TableSkeleton columns={columns} />
       ) : (
         <div className="space-y-5">
           <DataTable
@@ -396,12 +398,14 @@ export function CollectionsScreen() {
                       : "Create your first collection to group entries into queryable sets."
                   }
                   action={
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                      onClick={() => setCreateOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" /> Create collection
-                    </Button>
+                    canCreate ? (
+                      <Button
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={() => setCreateOpen(true)}
+                      >
+                        <Plus className="h-4 w-4" /> Create collection
+                      </Button>
+                    ) : null
                   }
                 />
               </div>

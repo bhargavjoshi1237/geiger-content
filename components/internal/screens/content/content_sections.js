@@ -23,6 +23,8 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import { CONTENT_STATUS_MAP, CONTENT_TYPE_MAP } from "./constants";
+import { BodyEditor } from "../editorial/body_blocks";
+import { parseBody, serializeBody } from "../editorial/body_doc";
 
 function OverviewSection({ content, onPatch }) {
   const patch = onPatch || (() => {});
@@ -117,13 +119,14 @@ function BodySection({ content, onPatch }) {
   const patch = onPatch || (() => {});
   return (
     <div className="space-y-6">
-      <SectionCard title="Body">
+      <SectionCard
+        title="Body"
+        description="Portable JSON blocks, stored as text. Legacy plain text loads as one paragraph."
+      >
         <Field label="Body">
-          <Textarea
-            value={content?.body || ""}
-            onChange={(e) => patch({ body: e.target.value })}
-            placeholder="Write the entry…"
-            rows={10}
+          <BodyEditor
+            doc={parseBody(content?.body)}
+            onChange={(doc) => patch({ body: serializeBody(doc) })}
           />
         </Field>
       </SectionCard>

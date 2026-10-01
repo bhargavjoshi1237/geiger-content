@@ -8,8 +8,10 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import {
+  isSupabaseConfigured,
+  publicClient,
+} from "@/supabase/components/content-client";
 import { getUser } from "@/lib/supabase/user";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 
@@ -36,12 +38,6 @@ export function pickDefaultProjectId(projects) {
     // ignore storage failures
   }
   return projects[0].id;
-}
-
-// A public-schema view of the base client. public.projects and the org
-// bootstrap RPC are shared suite tables, outside this app's own schema.
-function publicClient() {
-  return createClient().schema("public");
 }
 
 function slugify(name) {

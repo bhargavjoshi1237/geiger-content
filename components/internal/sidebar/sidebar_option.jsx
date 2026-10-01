@@ -6,15 +6,16 @@ import {
   SidebarMenuButton,
   SidebarMenuBadge,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from "@geiger/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@geiger/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@geiger/ui/tooltip";
+import { isScreenImplemented } from "@/components/internal/screens/registry";
 
 export function SidebarOption({
   title,
@@ -78,38 +79,59 @@ export function SidebarOption({
 
       {subItems && isExpanded && !isCollapsed && (
         <ul className="mt-1 flex flex-col gap-0.5 pl-2">
-          {subItems.map((sub) => (
-            <li key={sub.title}>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={(e) => {
-                  e.preventDefault();
-                  onClick(sub.title);
-                }}
-                className={cn(
-                  "relative flex h-8 w-full items-center justify-start gap-2 rounded-md px-2 text-left text-sm leading-none transition-colors",
-                  activeSubTab === sub.title
-                    ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                    : "bg-transparent text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                )}
-              >
-                {sub.icon && (
-                  <sub.icon
-                    className={cn(
-                      "w-4 h-4 shrink-0 transition-colors",
-                      activeSubTab === sub.title
-                        ? iconColor || "text-foreground"
-                        : iconColor || "text-sidebar-foreground/70",
-                    )}
-                  />
-                )}
-                <span className="min-w-0 flex-1 truncate text-left">
-                  {sub.title}
-                </span>
-              </Button>
-            </li>
-          ))}
+          {subItems.map((sub) => {
+            const isBuilt = isScreenImplemented(sub.title);
+            const isSubActive = activeSubTab === sub.title;
+            return (
+              <li key={sub.title}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  title={isBuilt ? undefined : `${sub.title} — not built yet`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onClick(sub.title);
+                  }}
+                  className={cn(
+                    "relative flex h-8 w-full items-center justify-start gap-2 rounded-md px-2 text-left text-sm leading-none transition-colors",
+                    isSubActive
+                      ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                      : "bg-transparent hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    // Unbuilt destinations sit a step back so the nav reflects
+                    // what actually exists without shouting about it.
+                    isSubActive
+                      ? null
+                      : isBuilt
+                        ? "text-sidebar-foreground/70"
+                        : "text-sidebar-foreground/40",
+                  )}
+                >
+                  {sub.icon && (
+                    <sub.icon
+                      className={cn(
+                        "w-4 h-4 shrink-0 transition-colors",
+                        isSubActive
+                          ? iconColor || "text-foreground"
+                          : iconColor ||
+                            (isBuilt
+                              ? "text-sidebar-foreground/70"
+                              : "text-sidebar-foreground/40"),
+                      )}
+                    />
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-left">
+                    {sub.title}
+                  </span>
+                  {isBuilt ? null : (
+                    <span
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-sidebar-foreground/30"
+                      aria-hidden="true"
+                    />
+                  )}
+                </Button>
+              </li>
+            );
+          })}
         </ul>
       )}
 

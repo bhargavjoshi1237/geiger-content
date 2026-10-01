@@ -3,7 +3,7 @@
 import React, { Suspense } from "react";
 import { AppSidebar } from "@/components/internal/sidebar/sidebar";
 import { Topbar } from "@/components/internal/topbar/topbar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset } from "@geiger/ui/sidebar";
 import { ComingSoonScreen } from "@/components/internal/screens/coming_soon";
 import { getScreen, getScreenComponent } from "@/components/internal/screens/registry";
 import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";
@@ -38,7 +38,7 @@ function WorkspaceContent() {
         className="!flex h-full min-w-0 flex-col"
         style={{ flexDirection: "column" }}
       >
-        <Topbar />
+        <Topbar onNavigate={setCurrentTab} />
         <div className="relative flex flex-1 overflow-hidden">
           <AppSidebar activeTab={currentTab} onTabChange={setCurrentTab} />
           <SidebarInset className="relative flex h-full flex-1 flex-col overflow-hidden border-none bg-transparent">
@@ -49,7 +49,10 @@ function WorkspaceContent() {
             >
               {screenComponent
                 ? React.createElement(screenComponent)
-                : React.createElement(ComingSoonScreen, screen)}
+                : React.createElement(ComingSoonScreen, {
+                    ...screen,
+                    onNavigate: setCurrentTab,
+                  })}
             </main>
           </SidebarInset>
         </div>

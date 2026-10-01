@@ -6,7 +6,11 @@ import { DataTable, ScreenHeader, SectionCard, StatsBar } from "@/components/int
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { FUNNELS_JOURNEYS } from "./demo_data";
+import {
+  FALLBACK_FUNNELS,
+  buildFunnels,
+  useLiveAnalytics,
+} from "./live_data";
 import {
   Bar,
   BarChart,
@@ -29,7 +33,20 @@ import {
 
 export function FunnelsJourneysScreen() {
   const [range, setRange] = useState("30d");
-  const d = FUNNELS_JOURNEYS;
+  const { loading, live, metrics, events, entries } = useLiveAnalytics();
+  const dataset = live ? buildFunnels({ events, metrics, entries }) : null;
+  const d = dataset ?? FALLBACK_FUNNELS;
+  const sample = !loading && !dataset;
+  const dropoffs = d.funnel.slice(1).map((s, i) => {
+    const prev = d.funnel[i].value || 0;
+    const pct = prev ? Math.round((s.value / prev) * 100) : 0;
+    return {
+      s: `${d.funnel[i].name} → ${s.name}`,
+      v: `${pct}% continue`,
+      w: `${pct}%`,
+      c: CHART_COLORS[(i + 1) % CHART_COLORS.length],
+    };
+  });
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -37,6 +54,7 @@ export function FunnelsJourneysScreen() {
         description="Stage transitions, drop-offs, time to convert, and winning content paths."
         actions={
           <>
+            {sample ? <Badge variant="neutral">Sample data</Badge> : null}
             <FilterDropdown value={range} onValueChange={setRange} options={RANGE_OPTIONS} height="h-9" />
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Download className="h-4 w-4" /> Export
@@ -63,13 +81,9 @@ export function FunnelsJourneysScreen() {
             ))}
           </div>
         </SectionCard>
-        <SectionCard title="Drop-off signals" description="Largest relative loss sits between steps 2 and 3.">
+        <SectionCard title="Drop-off signals" description="Largest relative loss between consecutive steps.">
           <div className="grid gap-3">
-            {[
-              { s: "Engaged → Solution", v: "44% continue", w: "56%", c: CHART_COLORS[2] },
-              { s: "Solution → Trial", v: "46% continue", w: "46%", c: CHART_COLORS[3] },
-              { s: "Trial → Converted", v: "52% continue", w: "52%", c: CHART_COLORS[1] },
-            ].map((r) => (
+            {dropoffs.map((r) => (
               <div key={r.s} className="rounded-xl border border-border bg-surface-card p-3">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-medium text-foreground">{r.s}</span>
@@ -80,7 +94,9 @@ export function FunnelsJourneysScreen() {
                 </div>
               </div>
             ))}
-            <p className="text-xs leading-5 text-text-secondary">Recommendation: add a comparison block and social proof on solution pages to lift step-3 throughput.</p>
+            {sample ? (
+              <p className="text-xs leading-5 text-text-secondary">Recommendation: add a comparison block and social proof on solution pages to lift step-3 throughput.</p>
+            ) : null}
           </div>
         </SectionCard>
       </div>
@@ -100,16 +116,20 @@ export function FunnelsJourneysScreen() {
         </ChartContainer>
       </SectionCard>
       <SectionCard title="Top paths" description="Content sequences that most reliably lead to outcomes.">
-        <DataTable
-          columns={[
-            { key: "path", header: "Path", render: (r) => <span className="font-medium text-foreground">{r.path}</span> },
-            { key: "users", header: "Users", render: (r) => <span className="text-sm text-text-secondary tabular-nums">{r.users}</span> },
-            { key: "conv", header: "Conv.", render: (r) => <span className="text-sm text-text-secondary tabular-nums">{r.conv}</span> },
-            { key: "time", header: "Avg. time", align: "right", render: (r) => <span className="text-sm text-text-secondary tabular-nums">{r.time}</span> },
-          ]}
-          data={d.paths}
-          getRowKey={(r) => r.path}
-        />
+        {d.paths.length ? (
+          <DataTable
+            columns={[
+              { key: "path", header: "Path", render: (r) => <span className="font-medium text-foreground">{r.path}</span> },
+              { key: "users", header: "Users", render: (r) => <span className="text-sm text-text-secondary tabular-nums">{r.users}</span> },
+              { key: "conv", header: "Conv.", render: (r) => <span className="text-sm text-text-secondary tabular-nums">{r.conv}</span> },
+              { key: "time", header: "Avg. time", align: "right", render: (r) => <span className="text-sm text-text-secondary tabular-nums">{r.time}</span> },
+            ]}
+            data={d.paths}
+            getRowKey={(r) => r.path}
+          />
+        ) : (
+          <p className="text-sm text-text-secondary">No multi-step journeys yet — paths appear once actors visit two or more entries.</p>
+        )}
       </SectionCard>
     </MainScreenWrapper>
   );

@@ -6,7 +6,6 @@ import {
   FilePlus2,
   Copy,
   ExternalLink,
-  Loader2,
   Pencil,
   Plus,
   RotateCcw,
@@ -18,6 +17,7 @@ import {
   ListPagination,
   usePagination,
 } from "@/components/internal/shared/pagination";
+import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
   EmptyState,
@@ -67,6 +67,7 @@ import {
 import { getUser } from "@/lib/supabase/user";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
+import { useCan } from "@/context/rbac-context";
 import { ContentDetailScreen } from "./content_detail";
 
 const EMPTY_DRAFT = {
@@ -222,6 +223,9 @@ export function EntriesList({
   const { contentId, openContent, closeContent } = useWorkspaceUrl();
   const { projectId } = useProject();
   const [userId, setUserId] = useState(null);
+  // Advisory gating: hidden for roles without the edit capability. Permissive
+  // while grants load and when no roles are configured (see rbac-context).
+  const canCreate = useCan("content.entry.edit");
 
   const selected = useMemo(
     () => (contentId ? rows.find((r) => r.id === contentId) || null : null),
@@ -507,12 +511,14 @@ export function EntriesList({
         title={title}
         description={description}
         actions={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="h-4 w-4" /> {createButtonLabel}
-          </Button>
+          canCreate ? (
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="h-4 w-4" /> {createButtonLabel}
+            </Button>
+          ) : null
         }
       />
 
@@ -545,10 +551,7 @@ export function EntriesList({
       </Toolbar>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading {title}…
-        </div>
+        <TableSkeleton columns={columns} />
       ) : (
         <div className="space-y-5">
           <DataTable
@@ -571,12 +574,14 @@ export function EntriesList({
                       : emptyDescription
                   }
                   action={
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                      onClick={() => setCreateOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" /> {createButtonLabel}
-                    </Button>
+                    canCreate ? (
+                      <Button
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={() => setCreateOpen(true)}
+                      >
+                        <Plus className="h-4 w-4" /> {createButtonLabel}
+                      </Button>
+                    ) : null
                   }
                 />
               </div>

@@ -110,7 +110,12 @@ export function RbacProvider({ children }) {
       if (seeded?.length) roleRows = seeded;
       const fallback = (roleRows || []).find((r) => r.key === "writer") || null;
       if (await ensureMembership(projectId, fallback?.id ?? null)) {
-        grantRows = (await listUserGrants(projectId, uid)) ?? grantRows;
+        const [refreshedRoles, refreshedGrants] = await Promise.all([
+          listRoles(projectId),
+          listUserGrants(projectId, uid),
+        ]);
+        roleRows = refreshedRoles ?? roleRows;
+        grantRows = refreshedGrants ?? grantRows;
       }
     }
 

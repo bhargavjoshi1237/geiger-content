@@ -1,106 +1,23 @@
 "use client";
 import { useState } from "react";
-import { Download } from "lucide-react";
-import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { DataTable, ScreenHeader, SectionCard, StatsBar, StatusPill } from "@/components/internal/shared/screen_kit";
-import { Button } from "@geiger/ui/button";
-import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { AI_TAG_SUGGESTIONS } from "./demo_data";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  CHART_COLORS,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  GRID_STROKE,
-  Pie,
-  PieChart,
-  RANGE_OPTIONS,
-  XAxis,
-  YAxis,
-} from "./charts";
-
-const STATUS_MAP = {
-  Accepted: { label: "Accepted", variant: "success", dotClass: "bg-emerald-400" },
-  Edited: { label: "Edited", variant: "info", dotClass: "bg-sky-400" },
-  Pending: { label: "Pending", variant: "neutral", dotClass: "bg-[#737373]" },
-  Rejected: { label: "Rejected", variant: "outline", dotClass: "bg-[#525252]" },
-};
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
+import { Badge } from "@geiger/ui/badge";
+import { DataTable, SectionCard } from "@/components/internal/shared/screen_kit";
+import { useInsights, similarityLabel } from "./insights_data";
+import { InsightsScreen } from "./insights_screen";
 
 export function AiTagSuggestionsScreen() {
-  const [range, setRange] = useState("30d");
-  const d = AI_TAG_SUGGESTIONS;
-  return (
-    <MainScreenWrapper>
-      <ScreenHeader
-        title="AI Tag Suggestions"
-        description="Machine-proposed taxonomy and metadata awaiting editorial approval."
-        actions={
-          <>
-            <FilterDropdown value={range} onValueChange={setRange} options={RANGE_OPTIONS} height="h-9" />
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Download className="h-4 w-4" /> Export
-            </Button>
-          </>
-        }
-      />
-      <StatsBar stats={d.stats} />
-      <div className="grid gap-4 lg:grid-cols-3">
-        <SectionCard title="Confidence distribution" description="Higher buckets are safe for bulk approval." className="lg:col-span-2">
-          <ChartContainer config={{ count: { label: "Suggestions", color: CHART_COLORS[1] } }} className="h-[300px] w-full">
-            <BarChart data={d.confidence} margin={{ left: -12, right: 8 }}>
-              <CartesianGrid stroke={GRID_STROKE} strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="bucket" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-              <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="count" radius={[8, 8, 0, 0]} maxBarSize={52}>
-                {d.confidence.map((_, i) => (
-                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ChartContainer>
-        </SectionCard>
-        <SectionCard title="Review outcomes" description="What editors did with suggestions.">
-          <ChartContainer config={{ outcome: { label: "Count" } }} className="h-[300px] w-full">
-            <PieChart>
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Pie data={d.outcome} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={3} strokeWidth={0}>
-                {d.outcome.map((_, i) => (
-                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ChartContainer>
-          <div className="mt-2 grid gap-1.5">
-            {d.outcome.map((c, i) => (
-              <div key={c.name} className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-text-secondary">
-                  <span className="h-2 w-2 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                  {c.name}
-                </span>
-                <span className="font-medium text-foreground tabular-nums">{c.value.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      </div>
-      <SectionCard title="Suggestion queue" description="Approve, edit, or reject with model evidence.">
-        <DataTable
-          columns={[
-            { key: "content", header: "Content", render: (r) => <span className="font-medium text-foreground">{r.content}</span> },
-            { key: "tag", header: "Proposed tag", render: (r) => <span className="text-sm text-text-secondary">#{r.tag}</span> },
-            { key: "conf", header: "Confidence", render: (r) => <span className="text-sm text-text-secondary tabular-nums">{r.conf}</span> },
-            { key: "status", header: "Status", align: "right", render: (r) => <StatusPill status={r.status} map={STATUS_MAP} /> },
-          ]}
-          data={d.rows}
-          getRowKey={(r) => `${r.content}-${r.tag}`}
-        />
-      </SectionCard>
-    </MainScreenWrapper>
-  );
+  const [search, setSearch] = useState("");
+  const [threshold, setThreshold] = useState("0.65");
+  const [offset, setOffset] = useState(0);
+  const state = useInsights("tags", { offset });
+  const rows = (state.data?.rows || []).filter((r) => r.score >= Number(threshold) && `${r.content} ${r.tag} ${r.taxonomy}`.toLowerCase().includes(search.toLowerCase()));
+  return <InsightsScreen title="AI Tag Suggestions" description="Taxonomy terms supported by similar indexed neighbours, without generation requests." state={state} search={search} onSearchChange={setSearch} rows={rows}
+    emptyTitle={state.data?.scanned ? "No new tag suggestions in this scan" : "No indexed published sources yet"} emptyDescription="Index published entries with taxonomy assignments. Suggestions appear when a similar neighbour has a term the source does not have."
+    controls={<Select value={threshold} onValueChange={setThreshold}><SelectTrigger className="w-48" aria-label="Neighbour similarity"><SelectValue /></SelectTrigger><SelectContent>{["0.65", "0.75", "0.85", "0.95"].map((v) => <SelectItem key={v} value={v}>Neighbour similarity ≥ {Number(v) * 100}%</SelectItem>)}</SelectContent></Select>}
+    stats={(d) => [{ label: "Suggestions", value: String(d.rows.length), footer: "Missing taxonomy assignments" }, { label: "Sources scanned", value: String(d.scanned), footer: "Current index page" }, { label: "Provider requests", value: "0", footer: "Uses stored vectors only" }]}
+    onPrevious={offset ? () => setOffset(Math.max(0, offset - 100)) : null} onNext={state.data?.nextOffset != null ? () => setOffset(state.data.nextOffset) : null}>
+    <SectionCard title="Suggested terms" description="Review neighbour evidence and apply suitable terms in the entry editor. Similarity is not a calibrated probability."><DataTable columns={[{ key: "content", header: "Content" }, { key: "tag", header: "Suggested term", render: (r) => <Badge variant="neutral">{r.tag}</Badge> }, { key: "taxonomy", header: "Taxonomy" }, { key: "score", header: "Similarity", render: (r) => similarityLabel(r.score) }, { key: "evidence", header: "Evidence", render: (r) => r.evidence.map((e) => e.title).join(", ") }]} data={rows} getRowKey={(r) => r.id} /></SectionCard>
+  </InsightsScreen>;
 }
 export default AiTagSuggestionsScreen;

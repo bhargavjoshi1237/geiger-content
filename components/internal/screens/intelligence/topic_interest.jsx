@@ -4,8 +4,13 @@ import { Download } from "lucide-react";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { DataTable, ScreenHeader, SectionCard, StatsBar, StatusPill } from "@/components/internal/shared/screen_kit";
 import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { TOPIC_INTEREST } from "./demo_data";
+import {
+  FALLBACK_TOPICS,
+  buildTopics,
+  useLiveAnalytics,
+} from "./live_data";
 import {
   Area,
   AreaChart,
@@ -30,9 +35,22 @@ const STAGE_MAP = {
   Negative: { label: "Negative", variant: "outline", dotClass: "bg-[#525252]" },
 };
 
+const DEFAULT_TOPIC_SERIES = [
+  { key: "aiVideo", label: "AI video" },
+  { key: "contentOS", label: "Content OS" },
+  { key: "automation", label: "Automation" },
+];
+
 export function TopicInterestScreen() {
   const [range, setRange] = useState("30d");
-  const d = TOPIC_INTEREST;
+  const { loading, live, metrics, events, entries } = useLiveAnalytics();
+  const dataset = live ? buildTopics({ metrics, events, entries }) : null;
+  const d = dataset ?? FALLBACK_TOPICS;
+  const sample = !loading && !dataset;
+  const series = d.trendSeries || DEFAULT_TOPIC_SERIES;
+  const trendConfig = Object.fromEntries(
+    series.map((s, i) => [s.key, { label: s.label, color: CHART_COLORS[i % CHART_COLORS.length] }]),
+  );
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -40,6 +58,7 @@ export function TopicInterestScreen() {
         description="Audience interest and maturity for each topic, plus emerging opportunities."
         actions={
           <>
+            {sample ? <Badge variant="neutral">Sample data</Badge> : null}
             <FilterDropdown value={range} onValueChange={setRange} options={RANGE_OPTIONS} height="h-9" />
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Download className="h-4 w-4" /> Export
@@ -51,11 +70,7 @@ export function TopicInterestScreen() {
       <div className="grid gap-4 lg:grid-cols-3">
         <SectionCard title="Interest momentum" description="Engaged profiles per flagship topic." className="lg:col-span-2">
           <ChartContainer
-            config={{
-              aiVideo: { label: "AI video", color: CHART_COLORS[0] },
-              contentOS: { label: "Content OS", color: CHART_COLORS[1] },
-              automation: { label: "Automation", color: CHART_COLORS[2] },
-            }}
+            config={trendConfig}
             className="h-[300px] w-full"
           >
             <AreaChart data={d.trend} margin={{ left: -12, right: 8, top: 8 }}>
@@ -63,9 +78,9 @@ export function TopicInterestScreen() {
               <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Area type="monotone" dataKey="aiVideo" stroke="var(--color-aiVideo)" fill="var(--color-aiVideo)" fillOpacity={0.2} strokeWidth={2} />
-              <Area type="monotone" dataKey="contentOS" stroke="var(--color-contentOS)" fill="var(--color-contentOS)" fillOpacity={0.14} strokeWidth={2} />
-              <Area type="monotone" dataKey="automation" stroke="var(--color-automation)" fill="var(--color-automation)" fillOpacity={0.12} strokeWidth={2} />
+              {series.map((s) => (
+                <Area key={s.key} type="monotone" dataKey={s.key} stroke={`var(--color-${s.key})`} fill={`var(--color-${s.key})`} fillOpacity={0.16} strokeWidth={2} />
+              ))}
             </AreaChart>
           </ChartContainer>
         </SectionCard>

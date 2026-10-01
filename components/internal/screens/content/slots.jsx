@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   Blocks,
   Copy,
-  Loader2,
   Pencil,
   Plus,
   Trash2,
@@ -16,6 +15,7 @@ import {
   ListPagination,
   usePagination,
 } from "@/components/internal/shared/pagination";
+import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
   EmptyState,
@@ -56,6 +56,7 @@ import {
 import { getUser } from "@/lib/supabase/user";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
+import { useCan } from "@/context/rbac-context";
 import { SlotDetailScreen } from "./slot_detail";
 
 const STATUS_FILTER_OPTIONS = [
@@ -146,6 +147,9 @@ export function SlotsScreen() {
   const { slotId, openSlot, closeSlot } = useWorkspaceUrl();
   const { projectId } = useProject();
   const [userId, setUserId] = useState(null);
+  // Advisory gating. No slot-specific key exists in the catalog, so slots
+  // follow the entry-edit capability (slots resolve to entries).
+  const canCreate = useCan("content.entry.edit");
 
   const selected = useMemo(
     () => (slotId ? rows.find((r) => r.id === slotId) || null : null),
@@ -335,12 +339,14 @@ export function SlotsScreen() {
         title="Content Slots"
         description="Named locations where applications request dynamic content — eligible entries, fallbacks, and delivery behavior."
         actions={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="h-4 w-4" /> Create slot
-          </Button>
+          canCreate ? (
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="h-4 w-4" /> Create slot
+            </Button>
+          ) : null
         }
       />
 
@@ -363,10 +369,7 @@ export function SlotsScreen() {
       </Toolbar>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-subtle px-6 py-16 text-sm text-text-secondary">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading Content Slots…
-        </div>
+        <TableSkeleton columns={columns} />
       ) : (
         <div className="space-y-5">
           <DataTable
@@ -385,12 +388,14 @@ export function SlotsScreen() {
                       : "Create your first slot to give applications a named place to request content."
                   }
                   action={
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                      onClick={() => setCreateOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" /> Create slot
-                    </Button>
+                    canCreate ? (
+                      <Button
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={() => setCreateOpen(true)}
+                      >
+                        <Plus className="h-4 w-4" /> Create slot
+                      </Button>
+                    ) : null
                   }
                 />
               </div>

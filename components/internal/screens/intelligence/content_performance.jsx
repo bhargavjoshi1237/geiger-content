@@ -6,7 +6,11 @@ import { DataTable, ScreenHeader, SectionCard, StatsBar } from "@/components/int
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { CONTENT_PERFORMANCE } from "./demo_data";
+import {
+  FALLBACK_CONTENT,
+  buildContentPerformance,
+  useLiveAnalytics,
+} from "./live_data";
 import {
   Area,
   AreaChart,
@@ -28,7 +32,12 @@ import {
 
 export function ContentPerformanceScreen() {
   const [range, setRange] = useState("30d");
-  const d = CONTENT_PERFORMANCE;
+  const { loading, live, metrics, events, entries } = useLiveAnalytics();
+  const dataset = live
+    ? buildContentPerformance({ metrics, events, entries })
+    : null;
+  const d = dataset ?? FALLBACK_CONTENT;
+  const sample = !loading && !dataset;
   return (
     <MainScreenWrapper>
       <ScreenHeader
@@ -36,6 +45,7 @@ export function ContentPerformanceScreen() {
         description="Reach, engagement, conversion, and retention for every entry and collection."
         actions={
           <>
+            {sample ? <Badge variant="neutral">Sample data</Badge> : null}
             <FilterDropdown value={range} onValueChange={setRange} options={RANGE_OPTIONS} height="h-9" />
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Download className="h-4 w-4" /> Export
@@ -110,11 +120,7 @@ export function ContentPerformanceScreen() {
         </SectionCard>
         <SectionCard title="Underperforming" description="Needs editorial attention.">
           <div className="grid gap-3">
-            {[
-              { t: "Changelog — March", m: "44% engagement · high bounce" },
-              { t: "Legacy import doc", m: "31% engagement · stale 45d" },
-              { t: "Campaign templates", m: "-6% views week over week" },
-            ].map((r) => (
+            {d.underperforming.map((r) => (
               <div key={r.t} className="rounded-xl border border-border bg-surface-card p-3">
                 <p className="text-sm font-medium text-foreground">{r.t}</p>
                 <p className="mt-0.5 text-xs text-text-secondary">{r.m}</p>

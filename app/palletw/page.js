@@ -1,9 +1,11 @@
 import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { notFound } from "next/navigation";
+import { Button } from "@geiger/ui/button";
+import { Input } from "@geiger/ui/input";
+import { Label } from "@geiger/ui/label";
 
 export default function LightPallet() {
+  if (process.env.NODE_ENV === "production") return notFound();
   const surfaceColors = [
     { name: 'Background App', hex: '#ffffff', desc: 'Main application background' },
     { name: 'Background Content', hex: '#f9fafb', desc: 'Standard content area' },
