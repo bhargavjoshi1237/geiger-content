@@ -68,7 +68,10 @@ real-time (newest posts are minutes old) and needs no key.
 2. **collect / scan** — page each subreddit newest-first (100 posts/request, light fields),
    classify every image post against the steps that use that subreddit, hydrate the matches
    (`/api/posts/ids`) for gallery/preview data, keep those with a usable image. Dedicated
-   subreddits are scanned deeper (150 pages) than shared ones (20 pages).
+   subreddits are scanned deeper (150 pages) than shared ones (20 pages). **Breadth first:**
+   a subreddit pauses after `--dry-pages` (12) pages in a row that add nothing, so a rare
+   horizontal can't drag one subreddit back to 2025 while other topics wait; `--deep`
+   digs that long tail in a later part.
 3. **collect / search** — for steps still short, keyword searches (`title=`/`link_flair_text=`)
    inside their subreddits. Keyword search is heavy for the archive: it is skipped on
    subreddits over 2M members, retried at most twice, and a subreddit that times out is
@@ -107,6 +110,29 @@ to `data/feed-corpus/ratelimit.log` so runs can be sized: observed so far, rough
 ~60 s wait per 25 metadata requests and frequent timeouts on keyword search in very large
 subreddits. `--max-requests` and `--max-minutes` split a crawl into parts.
 
+### First crawl (2026-10-01 → 02)
+
+| | |
+|---|---|
+| Subreddits checked | 955 — 869 usable, 56 text-only, 30 missing/private |
+| Topic bridges measured | 549 weighted edges (e.g. camping→hiking 41, home-cooking↔world-cuisines 34) |
+| Steps rewired | 24 steps whose only sources were text-only/missing now point at image subreddits |
+| Images collected | **9,085** across all 60 topics (depth 1/2/3/4: 3,035 / 2,531 / 1,551 / 1,968), 4,507 galleries |
+| Date range | 2025-01-03 → 2026-10-02 (floor held) |
+| Requests / rate-limit waits | ~2,100 requests; 43 waits of ~50 s (all `422 Timeout`, one `520`) |
+| Throughput | ~1,800 images/h on deep scans, ~6,700/h on a 1–3 page newest-posts sweep |
+
+The first pass was deliberately shallow-and-wide: PC Building, Video Games and Retro Gaming
+got a full scan, the other 57 topics a newest-posts sweep (1 page per shared subreddit,
+3 per dedicated). Median topic: 117 images (thinnest: snow sports 26, overlanding 27,
+travel 35). Next parts, from the same cursors:
+
+```bash
+npm run feed:crawl -- --phase scan --max-minutes 240          # deepen every topic
+npm run feed:crawl -- --phase scan --deep --max-minutes 240   # long tail back to 2025-01
+npm run feed:crawl -- --phase search --max-minutes 120        # keyword fill for short steps
+```
+
 ## 3. The feed engine (`lib/feed/engine.mjs`)
 
 Pure functions, no I/O: `composeFeed(state, index)` builds a batch; `markShown` records it;
@@ -144,7 +170,8 @@ evidence, and the shares jitter ±6% every batch so there is no visible rhythm.
 
 - **Spacing rules** at assembly: never the same horizontal back to back; at most 2 items of
   one subtopic and 3 of one topic in any window of 6; at most 2 of a topic in a row and 3 per
-  batch. Rules relax only when nothing else fits — never the same-horizontal rule.
+  batch. A reserve of shallow picks from topics outside the recent window lets thin catalogs
+  keep the rules; they relax only when nothing at all fits — never the same-horizontal rule.
 - **Fatigue**: a topic/subtopic/horizontal shown a lot in the last 30 impressions is damped
   even if loved, then returns.
 - **Bridges** move the feed between neighbouring topics instead of jumping.
@@ -170,15 +197,21 @@ engagement and interest share early → late, circling index (share of the top 3
 the last 50 impressions; lower is fresher), distinct topics per batch, longest same-topic
 run, spacing violations, probes accepted, focus-subtopic depth and batches to reach it.
 
-Synthetic catalog, 60 batches × 10, taxonomy bridges, 8 seeds:
+Synthetic catalog (12 items per horizontal), 60 batches × 10, 8 seeds:
 
-| Reader | Interest share (late) | Circling | Topics / batch | Spacing violations | Focus depth |
-|---|---|---:|---:|---:|---|
-| AIO owner → custom loops | 0.45–0.57 | 0.46–0.60 | ~7.3 | 0 | 4 in 8/8 seeds |
-| Casual foodie | 0.06–0.72 (found in 7/8) | 0.44–0.66 | ~7.2 | 0 | stays broad (by design) |
-| Outdoor dog owner | 0.45–0.58 | 0.46–0.58 | ~7.3 | 0 | 3–4 in 7/8 seeds |
-| Wide explorer (no interests) | — | 0.40–0.54 | ~7.9 | 0 | — |
-| Shifting taste (gym → running) | 0.27–0.60 | 0.38–0.62 | ~7.3 | 0 | 1–4 (taste changes mid-run) |
+| Reader | Interest share (late) | Found | Circling | Topics / batch | Spacing violations | Focus depth per seed |
+|---|---|---:|---:|---:|---:|---|
+| AIO owner → custom loops | 0.45–0.57 | 8/8 | 0.46–0.58 | 7.0–8.2 | 0 | 4 4 4 4 4 4 4 4 |
+| Casual foodie | 0.60–0.68 | 8/8 | 0.48–0.62 | 6.8–7.5 | 0 | stays broad (by design) |
+| Outdoor dog owner | 0.55–0.62 | 8/8 | 0.54–0.64 | 7.0–7.6 | 0 | 1 1 4 4 4 4 4 4 |
+| Wide explorer (no interests) | — | — | 0.36–0.54 | 7.6–8.7 | 0 | — |
+| Shifting taste (gym → running) | 0.53–0.62 | 8/8 | 0.50–0.64 | 7.0–7.8 | 0 | 4 2 4 1 4 4 4 2 |
+
+On the **real crawled catalog** (9,085 items) the engine behaves the same where data is deep
+— AIO owner 0.43–0.53 share, 8/8 found, depth 4 in 8/8 — and spacing never breaks (0
+violations, max run 2). Readers whose topics are still thin in the first sweep (hiking 40,
+dogs 92 images) exhaust the unseen items and can't be served more of what they like (dog
+owner found in 1/8); that is corpus depth, fixed by the next crawl parts, not the engine.
 
 `tests/feed-engine.test.mjs` locks these in: spacing never breaks, cold feeds are broad,
 interests are found in ≥80% of seeded runs, depth advances one step at a time, probes stay
@@ -211,5 +244,7 @@ under 15% of impressions, and the same seed reproduces the same feed.
   turns the lab into the live feed.
 - **Bridges from embeddings.** Once images are embedded, add visual-similarity bridges
   between horizontals alongside the subreddit graph.
+- **Thin topics first.** `report.md` ranks topics by images; deepen the thinnest before the
+  next simulation pass so every reader has enough unseen content.
 - **Short horizontals.** After the crawl, `report.md` lists horizontals under 25 inside the
   2025+ window; widen their keywords or subreddits in the DSL and re-run (cursors resume).
