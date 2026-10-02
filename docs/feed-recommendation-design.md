@@ -110,6 +110,38 @@ to `data/feed-corpus/ratelimit.log` so runs can be sized: observed so far, rough
 ~60 s wait per 25 metadata requests and frequent timeouts on keyword search in very large
 subreddits. `--max-requests` and `--max-minutes` split a crawl into parts.
 
+### Crawling from many machines (fleet)
+
+Arctic Shift limits per IP, so parallel crawlers only help from different IPs. The fleet
+moves the crawl state into a shared queue on the Aiven Postgres (`content.feed_crawl_*`,
+migration `postgres/migrations/20261002051849_feed_crawl_fleet.sql`), so any number of
+machines split the remaining work:
+
+- **Tasks** — one row per walk (858 subreddit scans, 6,391 keyword searches), seeded from
+  the topic tree plus the local cursors. A worker leases one task (`for update skip locked`,
+  15-minute lease renewed every page), walks a slice (20 scan / 6 search pages, pausing after
+  12 dry pages) from the saved cursor, then hands it back for a later round. Breadth first:
+  lowest round, scans before searches, most productive first. A crashed worker's lease
+  expires and the next worker resumes from the last saved page.
+- **No double storage** — `content.feed_crawl_ingest()` stores an image only if its post and
+  image URL are new and its horizontal is under 25, locking the per-path counter so the cap
+  holds across workers.
+- **Failures** — a failed scan page is retried 10 min later (`failed` after 8 tries); a
+  keyword query that fails twice blocks keyword search on that subreddit. `requeue` resets both.
+- **Worker login** — machines connect as `feed_worker`, which can only touch the crawl tables.
+
+```bash
+npm run vector:db:push               # once: queue tables + feed_worker role
+npm run feed:fleet -- seed           # queue tasks, upload the local corpus + cursors (idempotent)
+npm run feed:fleet -- build          # -> data/feed-fleet/feed-worker.mjs (one file, credentials baked in)
+node feed-worker.mjs                 # on each machine (Node 18+, one per IP); --max-minutes, --name
+npm run feed:fleet -- status         # images, queue, live workers and their rates
+npm run feed:fleet -- pull           # copy fleet images into the local manifest for Feed Lab
+npm run feed:fleet -- requeue        # retry blocked/failed tasks
+```
+
+First fleet test (one machine, 4 min): 360 images, 175 requests, no rate-limit waits.
+
 ### First crawl (2026-10-01 → 02)
 
 | | |
@@ -227,12 +259,15 @@ under 15% of impressions, and the same seed reproduces the same feed.
 | `lib/feed/crawl/media.mjs` | image detection, gallery/preview extraction |
 | `lib/feed/crawl/store.mjs` | manifest parts, cursors, rate-limit log |
 | `lib/feed/crawl/crawler.mjs` | graph, collect (scan + search), report |
+| `lib/feed/crawl/fleet.mjs` | fleet queue: task plan, lease/ingest SQL, worker loop |
+| `scripts/feed-fleet.mjs`, `scripts/feed-worker.mjs` | fleet coordinator + worker (bundled to one file) |
 | `lib/feed/engine.mjs` | feed engine (pure) |
 | `lib/feed/simulator.mjs` | personas, synthetic catalog, metrics |
 | `scripts/feed-crawl.mjs`, `scripts/feed-simulate.mjs` | CLIs |
 | `components/internal/screens/recommendations/feed_lab.jsx` | Feed Lab screen |
 | `tests/feed-*.test.mjs` | `npm run test:feed` |
 | `data/feed-corpus/` | crawl output (git-ignored) |
+| `data/feed-fleet/` | built worker with credentials baked in (git-ignored) |
 
 ## 6. Next steps
 

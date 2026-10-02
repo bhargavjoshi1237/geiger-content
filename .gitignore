@@ -42,3 +42,4 @@ next-env.d.ts
 
 # feed corpus crawl output (manifests, state, reports)
 /data/feed-corpus/
+/data/feed-fleet/

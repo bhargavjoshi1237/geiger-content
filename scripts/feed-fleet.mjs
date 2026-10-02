@@ -1,0 +1,148 @@
+// Fleet coordinator (runs on this machine, as the Aiven admin). Apply the queue tables first: `npm run vector:db:push`.
+//   node scripts/feed-fleet.mjs seed     # queue every crawl task + upload the local corpus/cursors (idempotent)
+//   node scripts/feed-fleet.mjs build    # worker login + one-file worker at data/feed-fleet/feed-worker.mjs
+//   node scripts/feed-fleet.mjs status   # images, queue progress, live workers
+//   node scripts/feed-fleet.mjs pull     # copy fleet-collected images into the local manifest (for Feed Lab / simulator)
+//   node scripts/feed-fleet.mjs requeue  # retry blocked/failed tasks
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import nextEnv from "@next/env";
+import pg from "pg";
+import { createFleetRepo, planTasks, withLocalProgress } from "../lib/feed/crawl/fleet.mjs";
+import { DEFAULT_CORPUS_DIR, openStore, readManifest } from "../lib/feed/crawl/store.mjs";
+import { flattenHorizontals, loadTaxonomy } from "../lib/feed/taxonomy/index.mjs";
+import { connectionOptions } from "../lib/vector/connection.mjs";
+
+nextEnv.loadEnvConfig(process.cwd());
+const command = process.argv[2] || "status";
+const PER = 25;
+const FLEET_DIR = path.join(process.cwd(), "data", "feed-fleet");
+const log = (message) => console.log(`[${new Date().toISOString().slice(11, 19)}] ${message}`);
+
+const pool = new pg.Pool(connectionOptions());
+pool.on("error", () => {});
+const repo = createFleetRepo(pool);
+
+async function seed() {
+  const taxonomy = loadTaxonomy();
+  const store = openStore(DEFAULT_CORPUS_DIR);
+  const tasks = withLocalProgress(planTasks(taxonomy, store.readJson("graph.json", null)), store.state);
+  const inserted = await repo.seedTasks(tasks);
+  log(`queue: ${inserted} new tasks (${tasks.length} planned; ${tasks.filter((t) => t.kind === "scan").length} scans, ${tasks.filter((t) => t.kind === "search").length} searches)`);
+  let batch = [];
+  let stored = 0;
+  const flush = async () => { stored += (await repo.ingest(batch, PER, "local")).length; batch = []; };
+  for (const record of readManifest(DEFAULT_CORPUS_DIR)) {
+    batch.push(record);
+    if (batch.length === 500) await flush();
+  }
+  if (batch.length) await flush();
+  log(`images: uploaded ${stored} local records not already in the queue database`);
+}
+
+// Gives the least-privilege feed_worker role a password (once, kept in .env.local) and bundles the worker.
+async function build() {
+  let workerUrl = process.env.FEED_WORKER_DATABASE_URL;
+  if (!workerUrl) {
+    const password = crypto.randomBytes(24).toString("base64url");
+    await pool.query(`alter role feed_worker with login password '${password}'`);
+    const url = new URL(process.env.VECTOR_DATABASE_URL);
+    url.username = "feed_worker";
+    url.password = password;
+    url.searchParams.set("sslmode", "require");
+    workerUrl = url.toString();
+    fs.appendFileSync(path.join(process.cwd(), ".env.local"), `\nFEED_WORKER_DATABASE_URL=${workerUrl}\n`);
+    log("created the feed_worker login (saved as FEED_WORKER_DATABASE_URL in .env.local)");
+  }
+  const check = new pg.Pool({ ...connectionOptions({ VECTOR_DATABASE_URL: workerUrl }), max: 1 });
+  try {
+    const { rows } = await check.query("select count(*)::int as n from content.feed_crawl_tasks");
+    log(`worker login ok — sees ${rows[0].n} tasks`);
+  } finally {
+    await check.end();
+  }
+  const esbuild = await import("esbuild");
+  fs.mkdirSync(FLEET_DIR, { recursive: true });
+  const outfile = path.join(FLEET_DIR, "feed-worker.mjs");
+  await esbuild.build({
+    entryPoints: [path.join(process.cwd(), "scripts", "feed-worker.mjs")],
+    outfile,
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "node18",
+    external: ["pg-native"],
+    define: { __FEED_DB_URL__: JSON.stringify(workerUrl) },
+    // pg is CommonJS: give the ESM bundle a real require() for Node built-ins.
+    banner: { js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);" },
+    legalComments: "none",
+    logLevel: "warning",
+  });
+  log(`built ${path.relative(process.cwd(), outfile)} (${Math.round(fs.statSync(outfile).size / 1024)} KB) — copy it to each machine and run: node feed-worker.mjs`);
+  log("it contains the feed_worker password (crawl tables only) — don't commit or post it publicly");
+}
+
+async function status() {
+  const target = flattenHorizontals(loadTaxonomy()).length;
+  const [{ rows: [images] }, { rows: tasks }, { rows: workers }] = await Promise.all([
+    pool.query(`select count(*)::int as total,
+                       count(*) filter (where created_at > now() - interval '1 hour')::int as last_hour,
+                       count(*) filter (where worker <> 'local')::int as fleet,
+                       (select count(*)::int from content.feed_crawl_counts where n >= ${PER}) as full
+                from content.feed_crawl_images where deleted_at is null`),
+    pool.query("select kind, status, count(*)::int as n from content.feed_crawl_tasks where deleted_at is null group by 1, 2 order by 1, 2"),
+    pool.query(`select name, status, current_task, requests, waits, waited_seconds, added, started_at, last_seen,
+                       last_seen > now() - interval '3 minutes' as live
+                from content.feed_crawl_workers where deleted_at is null order by last_seen desc limit 50`),
+  ]);
+  console.log(`Images: ${images.total.toLocaleString()} / ${(target * PER).toLocaleString()} (${images.fleet.toLocaleString()} from the fleet, ${images.last_hour.toLocaleString()} in the last hour)`);
+  console.log(`Horizontals at ${PER}: ${images.full.toLocaleString()} / ${target.toLocaleString()}`);
+  console.log(`Tasks: ${tasks.map((t) => `${t.kind} ${t.status} ${t.n}`).join(" · ")}`);
+  const live = workers.filter((w) => w.live);
+  console.log(`Workers: ${live.length} live of ${workers.length} seen`);
+  for (const w of workers) {
+    const hours = Math.max((new Date(w.last_seen) - new Date(w.started_at)) / 3600000, 1 / 60);
+    console.log(`  ${w.live ? "●" : "○"} ${w.name.padEnd(28)} ${String(w.status).padEnd(8)} +${w.added} images (${Math.round(w.added / hours)}/h), ${w.requests} req, ${w.waits} waits${w.live && w.current_task ? ` — ${w.current_task}` : ""}`);
+  }
+}
+
+// Appends every fleet image the local manifest doesn't have yet as a new manifest part.
+async function pull() {
+  const store = openStore(DEFAULT_CORPUS_DIR);
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "").replace("T", "-");
+  const file = path.join(store.dir, "manifest", `part-fleet-${stamp}.jsonl`);
+  let after = "00000000-0000-0000-0000-000000000000";
+  let written = 0;
+  for (;;) {
+    const { rows } = await pool.query("select id, record from content.feed_crawl_images where deleted_at is null and id > $1 order by id limit 5000", [after]);
+    if (!rows.length) break;
+    after = rows.at(-1).id;
+    const fresh = rows.map((r) => r.record).filter((r) => !store.seenPosts.has(r.id));
+    if (fresh.length) fs.appendFileSync(file, fresh.map((r) => JSON.stringify(r)).join("\n") + "\n");
+    written += fresh.length;
+  }
+  log(written ? `pulled ${written} new images into ${path.relative(process.cwd(), file)}` : "local manifest is already up to date");
+}
+
+// Puts blocked/failed tasks back in the queue (e.g. after a rate-limit storm) and re-levels untouched rounds.
+async function requeue() {
+  const { rowCount: requeued } = await pool.query(
+    "update content.feed_crawl_tasks set status = 'queued', error = null, attempts = 0, available_at = now(), updated_at = now() where status in ('blocked', 'failed') and deleted_at is null",
+  );
+  const { rowCount: leveled } = await pool.query(
+    "update content.feed_crawl_tasks set round = case kind when 'scan' then 0 else 1 end, updated_at = now() where status = 'queued' and added = 0 and last_added = 0 and round <= 1",
+  );
+  log(`requeued ${requeued} blocked/failed tasks; re-leveled ${leveled} untouched tasks`);
+}
+
+const commands = { seed, build, status, pull, requeue };
+try {
+  if (!commands[command]) throw new Error(`Unknown command "${command}". Use seed, build, status, pull or requeue.`);
+  await commands[command]();
+} catch (error) {
+  console.error(error.message);
+  process.exitCode = 1;
+} finally {
+  await pool.end();
+}

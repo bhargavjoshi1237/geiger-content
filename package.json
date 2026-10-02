@@ -26,6 +26,8 @@
     "feed:graph": "node scripts/feed-crawl.mjs graph",
     "feed:crawl": "node scripts/feed-crawl.mjs collect",
     "feed:report": "node scripts/feed-crawl.mjs report",
+    "feed:fleet": "node scripts/feed-fleet.mjs",
+    "feed:worker": "node --env-file-if-exists=.env.local scripts/feed-worker.mjs",
     "feed:simulate": "node scripts/feed-simulate.mjs",
     "test:feed": "node --test tests/feed-*.test.mjs"
   },
@@ -58,6 +60,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "esbuild": "^0.25.12",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4"
