@@ -4,7 +4,7 @@
 //   node scripts/feed-fleet.mjs status   # images, queue progress, live workers
 //   node scripts/feed-fleet.mjs pull     # copy fleet-collected images into the local manifest (for Feed Lab / simulator)
 //   node scripts/feed-fleet.mjs requeue  # retry blocked/failed tasks
-//   node scripts/feed-fleet.mjs work --pool personal [--max-minutes M]  # crawl a pool from this machine
+//   node scripts/feed-fleet.mjs work --pool personal,edgy [--max-minutes M]  # crawl pools from this machine
 import crypto from "node:crypto";
 import os from "node:os";
 import fs from "node:fs";
@@ -93,30 +93,34 @@ async function build() {
 
 async function status() {
   const taxonomy = loadTaxonomy();
-  const target = flattenHorizontals(taxonomy).length;
+  const rows = flattenHorizontals(taxonomy);
+  const target = rows.length;
+  const capByPath = new Map(rows.map((r) => [r.horizontal.path, r.topic.cap || PER]));
+  const targetImages = rows.reduce((sum, r) => sum + (r.topic.cap || PER), 0);
   const pools = [...new Set(taxonomy.map((t) => t.pool))];
-  const [{ rows: [images] }, { rows: tasks }, { rows: workers }] = await Promise.all([
+  const [{ rows: [images] }, { rows: tasks }, { rows: workers }, { rows: counts }] = await Promise.all([
     pool.query(`select count(*)::int as total,
                        count(*) filter (where created_at > now() - interval '1 hour')::int as last_hour,
-                       count(*) filter (where worker <> 'local')::int as fleet,
-                       (select count(*)::int from content.feed_crawl_counts where n >= ${PER}) as full
+                       count(*) filter (where worker <> 'local')::int as fleet
                 from content.feed_crawl_images where deleted_at is null`),
     pool.query("select pool, kind, status, count(*)::int as n from content.feed_crawl_tasks where deleted_at is null group by 1, 2, 3 order by 1, 2, 3"),
     pool.query(`select name, status, current_task, requests, waits, waited_seconds, added, started_at, last_seen,
                        last_seen > now() - interval '3 minutes' as live
                 from content.feed_crawl_workers where deleted_at is null order by last_seen desc limit 50`),
+    pool.query("select path, n from content.feed_crawl_counts where deleted_at is null"),
   ]);
-  console.log(`Images: ${images.total.toLocaleString()} / ${(target * PER).toLocaleString()} (${images.fleet.toLocaleString()} from the fleet, ${images.last_hour.toLocaleString()} in the last hour)`);
-  console.log(`Horizontals at ${PER}: ${images.full.toLocaleString()} / ${target.toLocaleString()}`);
+  const full = counts.filter((c) => capByPath.has(c.path) && c.n >= capByPath.get(c.path)).length;
+  console.log(`Images: ${images.total.toLocaleString()} / ${targetImages.toLocaleString()} (${images.fleet.toLocaleString()} from the fleet, ${images.last_hour.toLocaleString()} in the last hour)`);
+  console.log(`Horizontals at target: ${full.toLocaleString()} / ${target.toLocaleString()}`);
   const { rows: byTopic } = await pool.query("select topic_id, count(*)::int as n from content.feed_crawl_images where deleted_at is null group by 1");
   const topicImages = new Map(byTopic.map((r) => [r.topic_id, r.n]));
   for (const name of pools) {
     const topics = taxonomy.filter((t) => t.pool === name);
     const have = topics.reduce((sum, t) => sum + (topicImages.get(t.id) || 0), 0);
-    console.log(`
-[${name}] ${have.toLocaleString()} / ${(flattenHorizontals(topics).length * PER).toLocaleString()} images across ${topics.length} topics`);
+    const cap = topics[0]?.cap || PER;
+    console.log(`\n[${name}] ${have.toLocaleString()} / ${(flattenHorizontals(topics).length * cap).toLocaleString()} images across ${topics.length} topics (${cap} per horizontal)`);
     console.log(`  tasks: ${tasks.filter((t) => t.pool === name).map((t) => `${t.kind} ${t.status} ${t.n}`).join(" · ") || "none queued yet"}`);
-    if (topics.length <= 10) console.log(`  ${topics.map((t) => `${t.id} ${topicImages.get(t.id) || 0}`).join(" · ")}`);
+    if (name !== "main") console.log(`  ${topics.map((t) => `${t.id} ${topicImages.get(t.id) || 0}`).join(" · ")}`);
   }
   console.log("");
   const live = workers.filter((w) => w.live);

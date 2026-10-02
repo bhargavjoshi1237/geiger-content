@@ -3,11 +3,12 @@ import assert from "node:assert/strict";
 import { allSubreddits, flattenHorizontals, loadTaxonomy, SHAPE, validateTaxonomy } from "../lib/feed/taxonomy/index.mjs";
 import { parseTaxonomy, slugify } from "../lib/feed/taxonomy/parse.mjs";
 
-test("topic tree is 60 core + 8 personal topics × 5 subtopics × 4 steps × 5 horizontals", () => {
+test("topic tree is 60 core + 8 personal topics (5×4×5) + 10 small edgy topics (3×4×3)", () => {
   const topics = loadTaxonomy();
   assert.deepEqual(validateTaxonomy(topics), []);
   assert.equal(topics.length, SHAPE.topics);
-  assert.equal(flattenHorizontals(topics).length, 68 * 5 * 4 * 5);
+  assert.equal(flattenHorizontals(topics).length, 68 * 5 * 4 * 5 + 10 * 3 * 4 * 3);
+  assert.ok(topics.filter((t) => t.pool === "edgy").every((t) => t.cap === 10));
   assert.equal(topics.filter((t) => t.pool === "personal").length, 8);
   assert.equal(topics.filter((t) => t.pool === "main").length, 60);
 });
