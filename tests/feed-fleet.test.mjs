@@ -7,7 +7,7 @@ import { parseTaxonomy } from "../lib/feed/taxonomy/parse.mjs";
 // In-memory stand-in for createFleetRepo with the same lease / cap / dedupe rules as the SQL.
 function memoryRepo(tasks) {
   const rows = tasks.map((t, i) => ({
-    id: `t${i}`, key: t.key, kind: t.kind, subreddit: t.subreddit, params: t.params, step_path: t.stepPath, horizontal_path: t.horizontalPath,
+    id: `t${i}`, key: t.key, pool: t.pool || "main", kind: t.kind, subreddit: t.subreddit, params: t.params, step_path: t.stepPath, horizontal_path: t.horizontalPath,
     priority: t.priority, round: t.round || 0, status: t.status || "queued", cursor_before: t.cursorBefore || null, pages: t.pages || 0, images: t.images || 0,
     added: 0, last_added: 0, attempts: 0, lease_token: null, available_at: 0, error: null, walkers: 0,
   }));
@@ -32,9 +32,9 @@ function memoryRepo(tasks) {
       }
       return stored;
     },
-    async claim(worker) {
+    async claim(worker, pool = "main") {
       const ready = rows
-        .filter((r) => r.status === "queued" && r.available_at <= clock)
+        .filter((r) => r.pool === pool && r.status === "queued" && r.available_at <= clock)
         .sort((a, b) => a.round - b.round || a.kind.localeCompare(b.kind) || b.last_added - a.last_added || a.priority - b.priority);
       const task = ready[0];
       if (!task) return null;
@@ -55,17 +55,18 @@ function memoryRepo(tasks) {
       Object.assign(row, { status: failed ? "failed" : status, attempts: error ? row.attempts + 1 : 0, last_added: lastAdded, error, round: row.round + 1, available_at: clock + delayMs, lease_token: null, worker: null });
       row.walkers -= 1;
     },
-    async blockSearches(subreddit, error) {
-      for (const r of rows) if (r.subreddit === subreddit && r.kind === "search" && r.status === "queued") Object.assign(r, { status: "blocked", error });
+    async blockSearches(subreddit, error, pool = "main") {
+      for (const r of rows) if (r.subreddit === subreddit && r.pool === pool && r.kind === "search" && r.status === "queued") Object.assign(r, { status: "blocked", error });
     },
-    async scanTask(subreddit) { return rows.find((r) => r.key === `scan:${subreddit}`) || null; },
+    async scanTask(subreddit, pool = "main") { return rows.find((r) => r.key === `${pool === "main" ? "" : `${pool}:`}scan:${subreddit}`) || null; },
     // An idle worker polls the queue about once a minute: let an hour pass per poll so delayed retries come due.
-    async queue() {
+    async queue(pool = "main") {
       clock += 3600000;
+      const mine = rows.filter((r) => r.pool === pool);
       return {
-        queued: rows.filter((r) => r.status === "queued").length,
-        ready: rows.filter((r) => r.status === "queued" && r.available_at <= clock).length,
-        leased: rows.filter((r) => r.status === "leased").length,
+        queued: mine.filter((r) => r.status === "queued").length,
+        ready: mine.filter((r) => r.status === "queued" && r.available_at <= clock).length,
+        leased: mine.filter((r) => r.status === "leased").length,
         expired: 0,
       };
     },
@@ -177,4 +178,32 @@ test("a failing keyword search blocks searches on that subreddit; a failing scan
   assert.equal(searches.filter((r) => r.attempts === 2).length, 1, "one keyword query is retried once before blocking");
   assert.ok(searches.every((r) => ["blocked", "done"].includes(r.status)));
   assert.equal(result.stoppedBy, "queue finished");
+});
+
+test("pools keep their own walks of a shared subreddit and a worker only leases its pool", async () => {
+  const main = demoTopic();
+  const [personal] = parseTaxonomy(`
+# Mine {mine} > demo @demosub
+## Sub @demosub
+- Loops @demosub ~ loop
+  Budget: budget | Fancy: fancy | Fails: leak | First: first | Done: flair=done
+- Two @demosub ~ two
+  A: a1 | B: b1 | C: c1 | D: d1 | E: e1
+- Three @demosub ~ three
+  A: a1 | B: b1 | C: c1 | D: d1 | E: e1
+- Four @demosub ~ four
+  A: a1 | B: b1 | C: c1 | D: d1 | E: e1
+`);
+  for (const s of personal.subtopics) for (const st of s.steps) { st.path = `mine/${s.id}/${st.id}`; for (const h of st.horizontals) h.path = `${st.path}/${h.id}`; }
+  const topics = [main, { ...personal, pool: "personal" }];
+  const tasks = planTasks(topics, null);
+  assert.ok(tasks.some((t) => t.key === "scan:demosub" && t.pool === "main"));
+  assert.ok(tasks.some((t) => t.key === "personal:scan:demosub" && t.pool === "personal"));
+  const repo = memoryRepo(tasks);
+  const { client } = fakeArchive();
+  const result = await runWorker({ client, repo, topics, worker: "p", pool: "personal", per: 3, idleMs: 1 });
+  assert.equal(result.stoppedBy, "queue finished");
+  assert.ok(repo.rows.filter((r) => r.pool === "main").every((r) => r.status === "queued" && r.pages === 0), "main pool untouched");
+  assert.ok(repo.rows.filter((r) => r.pool === "personal").every((r) => r.status !== "queued"));
+  assert.ok([...repo.images.values()].some((r) => r.topicId === "mine"));
 });

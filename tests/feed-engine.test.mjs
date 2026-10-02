@@ -4,7 +4,8 @@ import { buildTopicLinks, circlingIndex, composeFeed, createRng, createUserState
 import { PERSONAS, runSimulation, syntheticCatalog } from "../lib/feed/simulator.mjs";
 import { loadTaxonomy } from "../lib/feed/taxonomy/index.mjs";
 
-const topics = loadTaxonomy();
+// The 60 core topics: a fixed catalog keeps these seeded behaviour checks stable as personal topics are added.
+const topics = loadTaxonomy().filter((t) => t.pool === "main");
 const index = indexCatalog(syntheticCatalog(topics, { perHorizontal: 6, now: Date.parse("2026-09-30") }), { topicLinks: buildTopicLinks(topics) });
 const persona = (id) => PERSONAS.find((p) => p.id === id);
 

@@ -4,18 +4,26 @@
 //   node scripts/feed-fleet.mjs status   # images, queue progress, live workers
 //   node scripts/feed-fleet.mjs pull     # copy fleet-collected images into the local manifest (for Feed Lab / simulator)
 //   node scripts/feed-fleet.mjs requeue  # retry blocked/failed tasks
+//   node scripts/feed-fleet.mjs work --pool personal [--max-minutes M]  # crawl a pool from this machine
 import crypto from "node:crypto";
+import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
 import nextEnv from "@next/env";
 import pg from "pg";
-import { createFleetRepo, planTasks, withLocalProgress } from "../lib/feed/crawl/fleet.mjs";
+import { createArcticClient } from "../lib/feed/crawl/arctic.mjs";
+import { createFleetRepo, planTasks, runWorker, withLocalProgress } from "../lib/feed/crawl/fleet.mjs";
 import { DEFAULT_CORPUS_DIR, openStore, readManifest } from "../lib/feed/crawl/store.mjs";
 import { flattenHorizontals, loadTaxonomy } from "../lib/feed/taxonomy/index.mjs";
 import { connectionOptions } from "../lib/vector/connection.mjs";
 
 nextEnv.loadEnvConfig(process.cwd());
 const command = process.argv[2] || "status";
+const args = process.argv.slice(3);
+const flag = (name, fallback) => {
+  const i = args.indexOf(`--${name}`);
+  return i >= 0 && args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : fallback;
+};
 const PER = 25;
 const FLEET_DIR = path.join(process.cwd(), "data", "feed-fleet");
 const log = (message) => console.log(`[${new Date().toISOString().slice(11, 19)}] ${message}`);
@@ -84,21 +92,33 @@ async function build() {
 }
 
 async function status() {
-  const target = flattenHorizontals(loadTaxonomy()).length;
+  const taxonomy = loadTaxonomy();
+  const target = flattenHorizontals(taxonomy).length;
+  const pools = [...new Set(taxonomy.map((t) => t.pool))];
   const [{ rows: [images] }, { rows: tasks }, { rows: workers }] = await Promise.all([
     pool.query(`select count(*)::int as total,
                        count(*) filter (where created_at > now() - interval '1 hour')::int as last_hour,
                        count(*) filter (where worker <> 'local')::int as fleet,
                        (select count(*)::int from content.feed_crawl_counts where n >= ${PER}) as full
                 from content.feed_crawl_images where deleted_at is null`),
-    pool.query("select kind, status, count(*)::int as n from content.feed_crawl_tasks where deleted_at is null group by 1, 2 order by 1, 2"),
+    pool.query("select pool, kind, status, count(*)::int as n from content.feed_crawl_tasks where deleted_at is null group by 1, 2, 3 order by 1, 2, 3"),
     pool.query(`select name, status, current_task, requests, waits, waited_seconds, added, started_at, last_seen,
                        last_seen > now() - interval '3 minutes' as live
                 from content.feed_crawl_workers where deleted_at is null order by last_seen desc limit 50`),
   ]);
   console.log(`Images: ${images.total.toLocaleString()} / ${(target * PER).toLocaleString()} (${images.fleet.toLocaleString()} from the fleet, ${images.last_hour.toLocaleString()} in the last hour)`);
   console.log(`Horizontals at ${PER}: ${images.full.toLocaleString()} / ${target.toLocaleString()}`);
-  console.log(`Tasks: ${tasks.map((t) => `${t.kind} ${t.status} ${t.n}`).join(" · ")}`);
+  const { rows: byTopic } = await pool.query("select topic_id, count(*)::int as n from content.feed_crawl_images where deleted_at is null group by 1");
+  const topicImages = new Map(byTopic.map((r) => [r.topic_id, r.n]));
+  for (const name of pools) {
+    const topics = taxonomy.filter((t) => t.pool === name);
+    const have = topics.reduce((sum, t) => sum + (topicImages.get(t.id) || 0), 0);
+    console.log(`
+[${name}] ${have.toLocaleString()} / ${(topics.length * 500).toLocaleString()} images across ${topics.length} topics`);
+    console.log(`  tasks: ${tasks.filter((t) => t.pool === name).map((t) => `${t.kind} ${t.status} ${t.n}`).join(" · ") || "none queued yet"}`);
+    if (topics.length <= 10) console.log(`  ${topics.map((t) => `${t.id} ${topicImages.get(t.id) || 0}`).join(" · ")}`);
+  }
+  console.log("");
   const live = workers.filter((w) => w.live);
   console.log(`Workers: ${live.length} live of ${workers.length} seen`);
   for (const w of workers) {
@@ -136,9 +156,28 @@ async function requeue() {
   log(`requeued ${requeued} blocked/failed tasks; re-leveled ${leveled} untouched tasks`);
 }
 
-const commands = { seed, build, status, pull, requeue };
+// Runs a worker from this machine on one pool, over the admin connection (no worker login needed).
+async function work() {
+  const name = flag("pool", "main");
+  const maxMinutes = Number(flag("max-minutes", Infinity));
+  const controller = new AbortController();
+  const stop = () => { log("stopping — handing the current task back"); controller.abort(); };
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
+  const client = createArcticClient({
+    deadline: Number.isFinite(maxMinutes) ? Date.now() + maxMinutes * 60000 : Infinity,
+    signal: controller.signal,
+    onWait: (event) => log(`rate limited (${event.status || "network"} ${event.message || ""}) — waiting ${Math.round(event.waitMs / 1000)}s`),
+  });
+  const worker = flag("name", `${os.hostname()}-${name}`);
+  log(`worker ${worker} crawling the ${name} pool`);
+  const summary = await runWorker({ client, repo, topics: loadTaxonomy(), worker, host: os.hostname(), version: "fleet-local", pool: name, signal: controller.signal, log });
+  log(`done (${summary.stoppedBy || "finished"}): ${summary.tasks} tasks, ${summary.pages} pages, +${summary.added} images, ${client.stats.requests} requests, ${client.stats.waits} rate-limit waits`);
+}
+
+const commands = { seed, build, status, pull, requeue, work };
 try {
-  if (!commands[command]) throw new Error(`Unknown command "${command}". Use seed, build, status, pull or requeue.`);
+  if (!commands[command]) throw new Error(`Unknown command "${command}". Use seed, build, status, pull, requeue or work.`);
   await commands[command]();
 } catch (error) {
   console.error(error.message);
