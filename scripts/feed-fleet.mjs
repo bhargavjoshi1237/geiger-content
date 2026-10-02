@@ -114,7 +114,7 @@ async function status() {
     const topics = taxonomy.filter((t) => t.pool === name);
     const have = topics.reduce((sum, t) => sum + (topicImages.get(t.id) || 0), 0);
     console.log(`
-[${name}] ${have.toLocaleString()} / ${(topics.length * 500).toLocaleString()} images across ${topics.length} topics`);
+[${name}] ${have.toLocaleString()} / ${(flattenHorizontals(topics).length * PER).toLocaleString()} images across ${topics.length} topics`);
     console.log(`  tasks: ${tasks.filter((t) => t.pool === name).map((t) => `${t.kind} ${t.status} ${t.n}`).join(" · ") || "none queued yet"}`);
     if (topics.length <= 10) console.log(`  ${topics.map((t) => `${t.id} ${topicImages.get(t.id) || 0}`).join(" · ")}`);
   }
