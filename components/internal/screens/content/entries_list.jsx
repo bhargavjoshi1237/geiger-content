@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { publicEntryPath } from "@/lib/delivery/core.mjs";
 import { toast } from "sonner";
 import {
   FilePlus2,
@@ -27,7 +28,7 @@ import {
   StatusPill,
   Toolbar,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import { Input } from "@geiger/ui/input";
@@ -101,7 +102,7 @@ function CreateEntryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 bg-background sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>
@@ -127,12 +128,12 @@ function CreateEntryDialog({
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {fixedType ? null : (
               <Field label="Type">
                 <Select value={draft.type} onValueChange={set("type")}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue/>
                   </SelectTrigger>
                   <SelectContent>
                     {CONTENT_TYPES.map((t) => (
@@ -147,7 +148,7 @@ function CreateEntryDialog({
             <Field label="Locale">
               <Select value={draft.locale} onValueChange={set("locale")}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue/>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="en">English (en)</SelectItem>
@@ -174,11 +175,7 @@ function CreateEntryDialog({
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
@@ -420,9 +417,10 @@ export function EntriesList({
   };
 
   const handleViewPage = (entry) => {
-    if (typeof window !== "undefined") {
+    const path = publicEntryPath(entry, process.env.NEXT_PUBLIC_BASE_PATH || "");
+    if (path && typeof window !== "undefined") {
       window.open(
-        `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/c/${entry.id}`,
+        path,
         "_blank",
         "noopener,noreferrer",
       );
@@ -434,9 +432,9 @@ export function EntriesList({
       key: "title",
       header: "Entry",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.title}</span>
-          <span className="text-xs text-text-secondary">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-md">
+          <span className="truncate font-medium text-foreground" title={r.title}>{r.title}</span>
+          <span className="truncate text-xs text-text-secondary">
             /{r.slug} · {r.type}
             {r.updatedAt ? ` · ${formatDate(r.updatedAt)}` : ""}
           </span>
@@ -477,7 +475,9 @@ export function EntriesList({
           items={[
             { icon: Pencil, label: "Edit", onSelect: () => openContent(r.id) },
             { icon: Copy, label: "Duplicate", onSelect: () => handleDuplicate(r) },
-            { icon: ExternalLink, label: "View page", onSelect: () => handleViewPage(r) },
+            ...(publicEntryPath(r)
+              ? [{ icon: ExternalLink, label: "View page", onSelect: () => handleViewPage(r) }]
+              : []),
             ...(showRestore
               ? [{ icon: RotateCcw, label: "Restore as draft", onSelect: () => handleRestore(r) }]
               : []),
@@ -525,7 +525,7 @@ export function EntriesList({
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {hideStatusFilter ? null : (
             <FilterDropdown
               value={status}
@@ -603,7 +603,7 @@ export function EntriesList({
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete entry</DialogTitle>
             <DialogDescription>
@@ -619,7 +619,7 @@ export function EntriesList({
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

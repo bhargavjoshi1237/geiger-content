@@ -11,7 +11,7 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import {
   Select,
   SelectContent,
@@ -25,6 +25,7 @@ import {
   results as getExperimentResults,
 } from "@/lib/supabase/experiments";
 import { useProject } from "@/context/project-context";
+import { Badge } from "@geiger/ui/badge";
 
 // Results: conversion table per experiment + winner = the arm with the
 // highest conversion rate (ties broken by exposures).
@@ -83,7 +84,7 @@ export function ResultsScreen() {
     {
       key: "arm", header: "Arm",
       render: (r) => (
-        <span className="font-medium text-foreground">
+        <span className="block max-w-[16rem] truncate font-medium text-foreground sm:max-w-sm" title={r.name}>
           {r.name} {r.winner ? "· winner" : ""}
         </span>
       ),
@@ -104,9 +105,9 @@ export function ResultsScreen() {
         return (
           <span className="flex flex-col gap-1">
             {s.significant ? (
-              <span className="inline-flex w-fit items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+              <Badge variant="success" className="w-fit">
                 Significant
-              </span>
+              </Badge>
             ) : (
               <span className="text-xs text-muted-foreground">Needs more data</span>
             )}
@@ -125,7 +126,7 @@ export function ResultsScreen() {
         actions={
           experiments.length > 0 ? (
             <Select value={selectedId} onValueChange={setSelectedId}>
-              <SelectTrigger className="w-64"><SelectValue placeholder="Select experiment" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-64" aria-label="Experiment"><SelectValue placeholder="Select experiment" /></SelectTrigger>
               <SelectContent>
                 {experiments.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
               </SelectContent>
@@ -139,8 +140,9 @@ export function ResultsScreen() {
       ) : !selected ? (
         <EmptyState icon={BarChart3} title="No experiments yet" description="Create one under All Experiments first." />
       ) : (
-        <SectionCard title={selected.name} description={`Goal: ${selected.goalMetric} · holdout ${selected.holdoutPct}%`}>
+        <SectionCard bare title={selected.name} description={`Goal: ${selected.goalMetric} · holdout ${selected.holdoutPct}%`} >
           <DataTable
+
             columns={columns}
             data={table}
             getRowKey={(r) => String(r.variantId || "holdout")}

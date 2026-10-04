@@ -7,7 +7,7 @@ import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers"
 import {
   ScreenHeader,
   SectionCard,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";

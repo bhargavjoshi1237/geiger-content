@@ -2,14 +2,15 @@
 
 import React, { useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
+import { Button } from "@geiger/ui/button";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
   EditorSectionHeader,
   SearchInput,
   StatusPill,
-} from "@/components/internal/shared/screen_kit";
-import { cn } from "@/lib/utils";
+} from "@geiger/ui/screen-kit";
+import { cn } from "@geiger/ui/lib/utils";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useIdleRecenter } from "@/lib/hooks/use-idle-recenter";
 
@@ -30,14 +31,16 @@ export function EditorHeader({
   return (
     <div className={cn("border-b border-border pb-6", className)}>
       {back ? (
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           type="button"
           onClick={back.onClick}
-          className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-foreground"
+          className="mb-2 h-auto justify-start gap-1.5 px-0 text-sm font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           {back.label}
-        </button>
+        </Button>
       ) : null}
       {/* Actions align to the title row, not the whole block — a header without
           meta must not float them up between the back link and the title. */}
@@ -46,7 +49,7 @@ export function EditorHeader({
           {title || status ? (
             <div className="flex min-h-9 flex-wrap items-center gap-2.5">
               {typeof title === "string" ? (
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
                   {title}
                 </h1>
               ) : (
@@ -88,14 +91,16 @@ function NavItem({ item, active, onSelect }) {
   const Icon = item.icon;
   const isActive = active === item.key;
   return (
-    <button
+    <Button
+      variant="ghost"
       type="button"
       data-active={isActive ? "true" : undefined}
+      aria-current={isActive ? "page" : undefined}
       onClick={() => onSelect(item.key)}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+        "h-auto w-full min-w-0 justify-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
         isActive
-          ? "bg-surface-card font-medium text-white"
+          ? "bg-surface-card font-medium text-foreground"
           : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
       )}
     >
@@ -103,12 +108,12 @@ function NavItem({ item, active, onSelect }) {
         <Icon
           className={cn(
             "h-4 w-4 shrink-0",
-            isActive ? "text-white" : "text-text-secondary",
+            isActive ? "text-foreground" : "text-text-secondary",
           )}
         />
       ) : null}
       <span className="truncate capitalize">{item.label}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -125,7 +130,7 @@ function EditorNav({
   const navRef = useIdleRecenter(active);  return (
     <aside
       className={cn(
-        "order-1 lg:order-2",
+        "order-1 min-w-0 lg:order-2",
         fullHeight && "lg:flex lg:min-h-0 lg:flex-col",
       )}
     >
@@ -310,7 +315,7 @@ export function EditorSections({
   return (
     <div
       className={cn(
-        "grid grid-cols-1 gap-8 lg:grid-cols-[1fr_260px]",
+        "grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[minmax(0,1fr)_260px] lg:gap-8",
         fullHeight && "lg:min-h-0 lg:flex-1 lg:grid-rows-1",
         className,
       )}

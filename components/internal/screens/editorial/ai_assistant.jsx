@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@geiger/ui/button";
 import { Textarea } from "@geiger/ui/textarea";
 import { Loader2 } from "lucide-react";
-import { EmptyState, Field, SectionCard } from "@/components/internal/shared/screen_kit";
+import { EmptyState, Field, SectionCard } from "@geiger/ui/screen-kit";
 import { useProject } from "@/context/project-context";
 import { useRbac } from "@/context/rbac-context";
 import { getAssistant, askAssistant } from "@/lib/supabase/assistant";
@@ -30,7 +30,7 @@ export function AiAssistantScreen() {
       <Field label="Request"><Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Summarize this entry, improve the introduction, or suggest a clearer title…" maxLength={4000} rows={4} /></Field>
       <Button onClick={ask} disabled={busy || !prompt.trim() || !can("content.entry.edit")}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{busy ? "Generating…" : "Ask assistant"}</Button>
     </div></SectionCard>}
-    <OperationTable rows={state.data?.history || []} title="No assistant history" description="Your saved requests and responses will appear here." columns={[{ key: "prompt", header: "Request", className: "max-w-xs whitespace-normal" }, { key: "response", header: "Response", className: "max-w-xl whitespace-pre-wrap" }, { key: "createdAt", header: "Created", render: (row) => displayTime(row.createdAt) }]} />
+    <OperationTable rows={state.data?.history || []} title="No assistant history" description="Your saved requests and responses will appear here." columns={[{ key: "prompt", header: "Request", className: "min-w-48 max-w-xs whitespace-normal break-words" }, { key: "response", header: "Response", className: "min-w-64 max-w-xl whitespace-pre-wrap break-words" }, { key: "createdAt", header: "Created", render: (row) => displayTime(row.createdAt) }]} />
   </OperationScreen>;
 }
 export default AiAssistantScreen;

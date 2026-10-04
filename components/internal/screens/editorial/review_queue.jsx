@@ -3,9 +3,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CheckCheck, ClipboardCheck, Undo2 } from "lucide-react";
+import { LoadingArea } from "@geiger/ui";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
   EmptyState,
@@ -13,20 +13,25 @@ import {
   SearchInput,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { updateContent } from "@/lib/supabase/content";
 import { listReviewQueue } from "@/lib/supabase/workflow";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import { useProject } from "@/context/project-context";
-import { CONTENT_TYPE_MAP, formatDate } from "../content/constants";
+import {
+  CONTENT_TYPE_FILTER_OPTIONS,
+  CONTENT_TYPE_MAP,
+  formatDate,
+} from "../content/constants";
 
-// Approval gate: entries with status "In review". Approve publishes,
-// reject sends back to Draft.
+// Approval gate: "In review" entries — approve publishes, reject sends back to Draft.
 export function ReviewQueueScreen() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [type, setType] = useState("all");
   const [pendingId, setPendingId] = useState(null);
   const { projectId } = useProject();
 
@@ -44,14 +49,16 @@ export function ReviewQueueScreen() {
 
   const filtered = useMemo(
     () =>
-      rows.filter(
-        (r) =>
+      rows.filter((r) => {
+        if (type !== "all" && r.type !== type) return false;
+        return (
           !search ||
           `${r.title} ${r.slug} ${r.author}`
             .toLowerCase()
-            .includes(search.toLowerCase()),
-      ),
-    [rows, search],
+            .includes(search.toLowerCase())
+        );
+      }),
+    [rows, search, type],
   );
 
   const stats = useMemo(() => {
@@ -60,7 +67,7 @@ export function ReviewQueueScreen() {
       return t < min ? t : min;
     }, Infinity);
     return [
-      { label: "Awaiting review", value: String(rows.length) },
+      { label: "Awaiting review", value: String(rows.length), footer: "In review now" },
       {
         label: "Oldest wait",
         value: rows.length && oldest !== Infinity ? formatDate(new Date(oldest).toISOString()) : "—",
@@ -98,9 +105,9 @@ export function ReviewQueueScreen() {
       key: "title",
       header: "Entry",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.title}</span>
-          <span className="text-xs text-text-secondary">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-md">
+          <span className="truncate font-medium text-foreground">{r.title}</span>
+          <span className="truncate text-xs text-text-secondary">
             /{r.slug} · {r.type}
             {r.author ? ` · ${r.author}` : ""}
             {r.updatedAt ? ` · updated ${formatDate(r.updatedAt)}` : ""}
@@ -133,7 +140,7 @@ export function ReviewQueueScreen() {
             disabled={pendingId === r.id}
             onClick={() => decide(r, false)}
           >
-            <Undo2 className="h-3 w-3" /> Reject
+            <Undo2 className="h-3.5 w-3.5" /> Reject
           </Button>
           <Button
             size="sm"
@@ -141,7 +148,7 @@ export function ReviewQueueScreen() {
             disabled={pendingId === r.id}
             onClick={() => decide(r, true)}
           >
-            <CheckCheck className="h-3 w-3" /> Approve
+            <CheckCheck className="h-3.5 w-3.5" /> Approve
           </Button>
         </div>
       ),
@@ -154,9 +161,16 @@ export function ReviewQueueScreen() {
         title="Review Queue"
         description="Entries in review, oldest first. Approve to publish, reject to draft."
       />
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
       <Toolbar>
-        <div />
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterDropdown
+            value={type}
+            onValueChange={setType}
+            options={CONTENT_TYPE_FILTER_OPTIONS}
+            height="h-9"
+          />
+        </div>
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -164,7 +178,7 @@ export function ReviewQueueScreen() {
         />
       </Toolbar>
       {loading ? (
-        <TableSkeleton columns={columns} />
+        <LoadingArea panel size={48} label="Loading review queue" />
       ) : (
         <DataTable
           columns={columns}
@@ -174,8 +188,25 @@ export function ReviewQueueScreen() {
             <div className="rounded-xl border border-border bg-surface-subtle">
               <EmptyState
                 icon={ClipboardCheck}
-                title={rows.length ? "No entries match your search" : "Queue is clear"}
-                description="Entries submitted for review land here for approve or reject."
+                title={rows.length ? "No entries match your filters" : "Queue is clear"}
+                description={
+                  rows.length
+                    ? "Try a different search or clear the type filter."
+                    : "Entries submitted for review land here for approve or reject."
+                }
+                action={
+                  rows.length ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSearch("");
+                        setType("all");
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  ) : null
+                }
               />
             </div>
           }

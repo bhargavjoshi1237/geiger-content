@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MAX_FAILURES, planTasks, runWorker, withLocalProgress } from "../lib/feed/crawl/fleet.mjs";
+import { createFleetRepo, MAX_FAILURES, planTasks, runWorker, withLocalProgress } from "../lib/feed/crawl/fleet.mjs";
 import { loadTaxonomy } from "../lib/feed/taxonomy/index.mjs";
 import { parseTaxonomy } from "../lib/feed/taxonomy/parse.mjs";
 
@@ -32,9 +32,9 @@ function memoryRepo(tasks) {
       }
       return stored;
     },
-    async claim(worker, pool = "main") {
+    async claim(worker, pool = "main", phase = "all") {
       const ready = rows
-        .filter((r) => r.pool === pool && r.status === "queued" && r.available_at <= clock)
+        .filter((r) => r.pool === pool && (phase === "all" || r.kind === phase) && r.status === "queued" && r.available_at <= clock)
         .sort((a, b) => a.round - b.round || a.kind.localeCompare(b.kind) || b.last_added - a.last_added || a.priority - b.priority);
       const task = ready[0];
       if (!task) return null;
@@ -60,9 +60,9 @@ function memoryRepo(tasks) {
     },
     async scanTask(subreddit, pool = "main") { return rows.find((r) => r.key === `${pool === "main" ? "" : `${pool}:`}scan:${subreddit}`) || null; },
     // An idle worker polls the queue about once a minute: let an hour pass per poll so delayed retries come due.
-    async queue(pool = "main") {
+    async queue(pool = "main", phase = "all") {
       clock += 3600000;
-      const mine = rows.filter((r) => r.pool === pool);
+      const mine = rows.filter((r) => r.pool === pool && (phase === "all" || r.kind === phase));
       return {
         queued: mine.filter((r) => r.status === "queued").length,
         ready: mine.filter((r) => r.status === "queued" && r.available_at <= clock).length,
@@ -119,6 +119,31 @@ function fakeArchive({ pages = 3, perPage = 100, fail = () => false } = {}) {
   };
   return { client, calls };
 }
+
+test("scan-only workers collect images and finish without leasing keyword searches", async () => {
+  const topics = [demoTopic()];
+  const repo = memoryRepo(planTasks(topics, null));
+  const { client, calls } = fakeArchive({ fail: (params) => Boolean(params.title || params.link_flair_text) });
+  const result = await runWorker({ client, repo, topics, worker: "scan-only", phase: "scan", per: 3, idleMs: 1 });
+  assert.equal(result.stoppedBy, "queue finished");
+  assert.ok(result.added > 0);
+  assert.equal(result.errors, 0);
+  assert.ok(calls.every((params) => !params.title && !params.link_flair_text));
+  assert.ok(repo.rows.filter((row) => row.kind === "search").every((row) => row.status === "queued" && row.pages === 0 && row.attempts === 0));
+});
+
+test("queue claims and completion counts apply the same parameterized task-kind filter", async () => {
+  const queries = [];
+  const repo = createFleetRepo({ query: async (sql, values) => { queries.push({ sql, values }); return { rows: [] }; } });
+  await repo.claim("scan-only", "personal,edgy", "scan");
+  await repo.queue("personal,edgy", "scan");
+  assert.deepEqual(queries[0].values, ["scan-only", ["personal", "edgy"], ["scan"]]);
+  assert.match(queries[0].sql, /kind = any\(\$3::text\[\]\)/);
+  assert.deepEqual(queries[1].values, [["personal", "edgy"], ["scan"]]);
+  assert.match(queries[1].sql, /kind = any\(\$2::text\[\]\)/);
+  await repo.claim("all", "main");
+  assert.deepEqual(queries[2].values, ["all", ["main"], ["scan", "search"]]);
+});
 
 test("planTasks queues one scan per usable subreddit and keyword searches per step", () => {
   const topics = loadTaxonomy();

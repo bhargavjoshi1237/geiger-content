@@ -21,7 +21,7 @@ import {
   Field,
   SettingsList,
   SettingRow,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { useProject } from "@/context/project-context";
@@ -299,7 +299,7 @@ export function EmbeddingsScreen() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <SectionCard
+                  <SectionCard bare
                     title="Indexed library"
                     description="Only eligible sources you can access appear here."
                   >
@@ -326,7 +326,7 @@ export function EmbeddingsScreen() {
                       }
                     />
                   </SectionCard>
-                  <SectionCard
+                  <SectionCard bare
                     title="Background jobs"
                     description="Failed jobs keep their reason. Rate-limited jobs retain their work and retry later."
                     action={

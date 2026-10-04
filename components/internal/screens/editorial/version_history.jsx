@@ -11,7 +11,7 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Badge } from "@geiger/ui/badge";
 import {
   Select,
@@ -114,7 +114,7 @@ export function VersionHistoryScreen() {
       key: "summary",
       header: "Payload",
       render: (v) => (
-        <span className="max-w-72 truncate font-mono text-xs text-text-secondary">
+        <span className="block max-w-72 truncate font-mono text-xs text-text-secondary" title={v.payload?.title}>
           {v.payload?.title || "—"}
           {v.payload?.data ? ` · ${Object.keys(v.payload.data).length} fields` : ""}
         </span>
@@ -129,7 +129,7 @@ export function VersionHistoryScreen() {
         description="Snapshotted payloads per entry. Compare or roll back under Compare & Rollback."
         actions={
           <Select value={entryId} onValueChange={pickVersions}>
-            <SelectTrigger className="w-64">
+            <SelectTrigger className="w-full min-w-0 sm:w-64" aria-label="Entry history">
               <SelectValue placeholder="Select an entry" />
             </SelectTrigger>
             <SelectContent>

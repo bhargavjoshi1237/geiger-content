@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Boxes, Undo2 } from "lucide-react";
+import { Boxes, Undo2, X } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -17,17 +17,16 @@ import {
   SearchInput,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import { ActionMenu } from "@geiger/ui/action-menu";
-import { formatDateTime } from "./constants";
+import { formatDate, formatDateTime } from "./constants";
 import { listContent } from "@/lib/supabase/content";
 import { listRecentVersions, rollbackTo } from "@/lib/supabase/versions";
 import { useProject } from "@/context/project-context";
 
-// Every publish snapshot, grouped by entry — the rollback surface. Restoring
-// a version rewrites the entry as a Draft (never auto-publishes).
+// Rollback surface: restoring a snapshot rewrites the entry as a Draft (never auto-publishes).
 export function ReleasesScreen() {
   const [versions, setVersions] = useState([]);
   const [titles, setTitles] = useState({});
@@ -70,7 +69,7 @@ export function ReleasesScreen() {
       { label: "Versioned entries", value: String(entries.size), footer: "Entries with history" },
       {
         label: "Latest snapshot",
-        value: latest ? latest.slice(0, 10) : "—",
+        value: latest ? formatDate(latest) || "—" : "—",
         footer: latest ? formatDateTime(latest) : "No snapshots yet",
       },
     ];
@@ -91,11 +90,11 @@ export function ReleasesScreen() {
       key: "entry",
       header: "Entry",
       render: (v) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="max-w-sm whitespace-normal break-words font-medium text-foreground">
             {titles[v.entryId] || "Deleted entry"}
           </span>
-          <span className="text-xs text-text-secondary">
+          <span className="whitespace-nowrap text-xs text-text-secondary">
             {formatDateTime(v.publishedAt || v.createdAt)}
           </span>
         </div>
@@ -110,7 +109,7 @@ export function ReleasesScreen() {
       key: "payload",
       header: "Snapshot",
       render: (v) => (
-        <span className="text-sm text-text-secondary">
+        <span className="block max-w-sm whitespace-normal break-words text-sm text-text-secondary">
           {v.payload?.title || titles[v.entryId] || "—"}
         </span>
       ),
@@ -137,13 +136,12 @@ export function ReleasesScreen() {
     <MainScreenWrapper>
       <ScreenHeader
         title="Releases"
-        description="Publish snapshots grouped by entry — what went live, when, and what it contained. Restore any version as a draft."
+        description="Every publish snapshot — what went live, when, and what it contained. Restore any version as a draft."
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
-        <div />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -170,14 +168,11 @@ export function ReleasesScreen() {
                       : "Publish an entry from the queue and its first snapshot lands here."
                   }
                   action={
-                    versions.length ? undefined : (
-                      <Button
-                        className="bg-primary text-primary-foreground hover:bg-primary/90"
-                        onClick={() => setSearch("")}
-                      >
-                        Clear search
+                    versions.length ? (
+                      <Button variant="outline" onClick={() => setSearch("")}>
+                        <X className="h-4 w-4" /> Clear search
                       </Button>
-                    )
+                    ) : undefined
                   }
                 />
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { BrainCircuit } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
@@ -8,7 +8,10 @@ import {
   EmptyState,
   ScreenHeader,
   SectionCard,
-} from "@/components/internal/shared/screen_kit";
+  StatsBar,
+  StatusPill,
+} from "@geiger/ui/screen-kit";
+import { EMPTY_PANEL_CLASS, MODEL_STATUS_MAP } from "./constants";
 
 const MODELS = [
   { name: "Similar content", status: "Live", detail: "Keyword-overlap ranking over title, excerpt and body. Try it under Similar Content." },
@@ -20,19 +23,27 @@ const MODELS = [
   { name: "Embeddings (pgvector)", status: "Planned", detail: "Vectors stored as jsonb arrays today; cosine similarity runs in JS. pgvector upgrade is a deliberate later migration." },
 ];
 
-// Recommendation Models: catalog of the ranking strategies available, with
-// honest maturity labels. No fake metrics — status is Live, Beta, Estimate
-// or Planned, never a number.
+// Recommendation Models: catalog of ranking strategies with honest maturity labels (Live/Beta/Estimate/Planned), never fake metrics.
 export function ModelsScreen() {
+  const stats = useMemo(
+    () => Object.keys(MODEL_STATUS_MAP).map((status) => ({
+      label: status,
+      value: String(MODELS.filter((m) => m.status === status).length),
+      footer: `of ${MODELS.length} strategies`,
+    })),
+    [],
+  );
+
   return (
     <MainScreenWrapper>
       <ScreenHeader
         title="Recommendation Models"
         description="Every ranking strategy in one catalog — what it does, and how mature it really is."
       />
-      <div className="grid gap-4 md:grid-cols-2">
+      <StatsBar stats={stats} />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {MODELS.map((m) => (
-          <SectionCard key={m.name} title={m.name} description={m.status}>
+          <SectionCard key={m.name} title={m.name} action={<StatusPill status={m.status} map={MODEL_STATUS_MAP} />}>
             <p className="text-sm text-text-secondary">{m.detail}</p>
           </SectionCard>
         ))}
@@ -41,6 +52,7 @@ export function ModelsScreen() {
         icon={BrainCircuit}
         title="No model training here"
         description="Models are deterministic strategies over your content and rules — there is no training job to monitor yet."
+        className={EMPTY_PANEL_CLASS}
       />
     </MainScreenWrapper>
   );

@@ -14,11 +14,12 @@ import {
   SectionCard,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { listExperiments, updateExperiment } from "@/lib/supabase/experiments";
 import { useProject } from "@/context/project-context";
+import { ExperimentCell } from "./parts";
 
 // Holdout Groups: the % of traffic that receives no treatment, carved out
 // before arm assignment so lift can be measured against a true baseline.
@@ -73,10 +74,7 @@ export function HoldoutsScreen() {
     {
       key: "exp", header: "Experiment",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
-          <span className="text-xs text-text-secondary">{r.status}</span>
-        </div>
+        <ExperimentCell name={r.name} meta={r.status} />
       ),
     },
     {
@@ -85,6 +83,7 @@ export function HoldoutsScreen() {
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <Input
             type="number" min="0" max="50" step="1" className="h-8 w-24"
+            aria-label={`Holdout percentage for ${r.name}`}
             value={drafts[r.id] ?? r.holdoutPct ?? 0}
             onChange={(e) => setDrafts((d) => ({ ...d, [r.id]: e.target.value }))}
           />

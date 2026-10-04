@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Heart, ImageIcon, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@geiger/ui/button";
-import { EmptyState } from "@/components/internal/shared/screen_kit";
+import { Card, CardContent } from "@geiger/ui/card";
+import { EmptyState } from "@geiger/ui/screen-kit";
 import { requestVector } from "@/lib/supabase/semantic";
 
 export function SemanticResults({
@@ -37,9 +38,9 @@ export function SemanticResults({
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {results.map((row) => (
-        <article
+        <Card
           key={`${row.sourceKind}:${row.sourceId}`}
-          className="overflow-hidden rounded-xl border border-border bg-surface-card"
+          className="min-w-0 gap-0 overflow-hidden rounded-xl border-border bg-surface-card py-0"
         >
           {row.sourceKind === "asset" ? (
             <a href={row.url} target="_blank" rel="noreferrer">
@@ -57,7 +58,7 @@ export function SemanticResults({
               <FileText className="h-6 w-6" />
             </div>
           )}
-          <div className="space-y-3 p-4">
+          <CardContent className="min-w-0 space-y-3 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs capitalize text-text-secondary">
@@ -66,31 +67,31 @@ export function SemanticResults({
                 </p>
                 {row.sourceKind === "entry" ? (
                   <Link
-                    className="mt-1 block font-medium text-foreground hover:underline"
+                    className="mt-1 block break-words font-medium text-foreground hover:underline"
                     href={`/c/${row.sourceId}`}
                   >
                     {row.title}
                   </Link>
                 ) : (
-                  <p className="mt-1 font-medium text-foreground">
+                  <p className="mt-1 break-words font-medium text-foreground">
                     {row.title}
                   </p>
                 )}
               </div>
-              <span className="text-xs tabular-nums text-text-secondary">
+              <span className="shrink-0 text-xs tabular-nums text-text-secondary">
                 {Number(row.score).toFixed(3)}
               </span>
             </div>
             {row.excerpt ? (
-              <p className="line-clamp-2 text-sm text-text-secondary">
+              <p className="line-clamp-2 break-words text-sm text-text-secondary">
                 {row.excerpt}
               </p>
             ) : null}
             <Button size="sm" variant="outline" onClick={() => like(row)}>
               <Heart className="h-3.5 w-3.5" /> Like
             </Button>
-          </div>
-        </article>
+          </CardContent>
+        </Card>
       ))}
     </div>
   );

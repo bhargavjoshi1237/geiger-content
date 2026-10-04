@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { FlaskConical, Play, RadioTower } from "lucide-react";
+import { FlaskConical, Loader2, Play, RadioTower, X } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -13,11 +13,12 @@ import {
   SectionCard,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import { listContent } from "@/lib/supabase/content";
 import { useProject } from "@/context/project-context";
+import { CodeBlock } from "../developers/code_block";
 
 const ENDPOINTS = [
   {
@@ -112,10 +113,10 @@ export function DeliveryApisScreen() {
       key: "endpoint",
       header: "Endpoint",
       render: (e) => (
-        <div className="flex flex-col gap-1">
-          <span className="flex items-center gap-2 font-medium text-foreground">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="flex flex-wrap items-center gap-2 font-medium text-foreground">
             <Badge variant={e.method === "GET" ? "info" : "neutral"}>{e.method}</Badge>
-            <span className="font-mono text-sm">{e.path}</span>
+            <span className="font-mono text-sm break-all">{e.path}</span>
           </span>
           <span className="text-xs text-text-secondary">{e.description}</span>
         </div>
@@ -125,7 +126,7 @@ export function DeliveryApisScreen() {
       key: "cache",
       header: "Cache",
       render: (e) => (
-        <span className="font-mono text-xs text-text-secondary">{e.cache}</span>
+        <span className="block max-w-64 whitespace-normal break-words font-mono text-xs text-text-secondary">{e.cache}</span>
       ),
     },
   ];
@@ -136,12 +137,9 @@ export function DeliveryApisScreen() {
         title="Delivery APIs"
         description="The public read surface — published entries only, no auth, cached at the edge. Drafts never leave the CMS through these routes."
         actions={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={handleTestFetch}
-            disabled={fetching}
-          >
-            <Play className="h-4 w-4" /> {fetching ? "Fetching…" : "Test live fetch"}
+          <Button onClick={handleTestFetch} disabled={fetching}>
+            {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+            {fetching ? "Fetching…" : "Test live fetch"}
           </Button>
         }
       />
@@ -149,7 +147,6 @@ export function DeliveryApisScreen() {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <div />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -157,7 +154,7 @@ export function DeliveryApisScreen() {
         />
       </Toolbar>
 
-      <div className="space-y-5">
+      <div className="space-y-8">
         <DataTable
           columns={columns}
           data={filtered}
@@ -168,6 +165,11 @@ export function DeliveryApisScreen() {
                 icon={RadioTower}
                 title="No endpoints match your search"
                 description="Try clearing the search."
+                action={
+                  <Button variant="outline" onClick={() => setSearch("")}>
+                    <X className="h-4 w-4" /> Clear search
+                  </Button>
+                }
               />
             </div>
           }
@@ -175,26 +177,28 @@ export function DeliveryApisScreen() {
 
         <SectionCard
           title="Live response preview"
+          description="GET /api/content/v1/entries?limit=5 from this browser."
           action={
             <Button
               variant="outline"
-              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              size="sm"
               onClick={handleTestFetch}
               disabled={fetching}
             >
-              <FlaskConical className="h-4 w-4" /> {fetching ? "Fetching…" : "GET /api/content/v1/entries?limit=5"}
+              {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
+              {fetching ? "Fetching…" : "Run"}
             </Button>
           }
         >
           {preview ? (
-            <pre className="max-h-96 overflow-auto rounded-lg border border-border bg-background p-4 font-mono text-xs leading-relaxed text-text-secondary">
-              {preview}
-            </pre>
+            <CodeBlock code={preview} preClassName="max-h-96" />
           ) : (
-            <p className="text-sm text-text-tertiary">
-              Hit “Test live fetch” to call the delivery API from this browser
-              and inspect exactly what external consumers receive.
-            </p>
+            <EmptyState
+              icon={FlaskConical}
+              title="No response yet"
+              description="Run a test fetch to inspect exactly what external consumers receive."
+              className="py-10"
+            />
           )}
         </SectionCard>
       </div>

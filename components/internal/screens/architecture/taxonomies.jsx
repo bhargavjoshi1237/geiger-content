@@ -15,7 +15,7 @@ import {
   SectionCard,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import { ActionMenu } from "@geiger/ui/action-menu";
+import { LoadingArea } from "@geiger/ui";
 import { listContent } from "@/lib/supabase/content";
 import {
   assignTerm,
@@ -52,7 +53,6 @@ import { getUser } from "@/lib/supabase/user";
 import { useProject } from "@/context/project-context";
 import { keyify, newId } from "./constants";
 
-import { LoadingArea } from "@geiger/ui";
 const EMPTY_TAXONOMY = { key: "", name: "", hierarchical: false };
 const EMPTY_TERM = { slug: "", label: "", parentId: "" };
 
@@ -73,7 +73,7 @@ function TaxonomyDialog({ initial, onClose, onSave }) {
   };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit taxonomy" : "New taxonomy"}</DialogTitle>
           <DialogDescription>
@@ -82,7 +82,7 @@ function TaxonomyDialog({ initial, onClose, onSave }) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Name" htmlFor="tax-name">
               <Input
                 id="tax-name"
@@ -106,7 +106,7 @@ function TaxonomyDialog({ initial, onClose, onSave }) {
               onValueChange={(v) => set("hierarchical")(v === "yes")}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue/>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="no">Flat (tags)</SelectItem>
@@ -220,7 +220,11 @@ export function TaxonomiesScreen() {
 
   const stats = useMemo(
     () => [
-      { label: "Taxonomies", value: String(taxonomies.length) },
+      {
+        label: "Taxonomies",
+        value: String(taxonomies.length),
+        footer: `${taxonomies.filter((t) => t.hierarchical).length} hierarchical`,
+      },
       {
         label: "Terms here",
         value: String(terms.length),
@@ -231,8 +235,13 @@ export function TaxonomiesScreen() {
         value: String(assigned.length),
         footer: "Terms on selected entry",
       },
+      {
+        label: "Entries",
+        value: String(entries.length),
+        footer: "Can carry terms",
+      },
     ],
-    [taxonomies, terms, assigned, activeTaxonomy],
+    [taxonomies, terms, assigned, activeTaxonomy, entries],
   );
 
   const handleSaveTaxonomy = async (draft) => {
@@ -344,9 +353,9 @@ export function TaxonomiesScreen() {
       key: "name",
       header: "Taxonomy",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
-          <span className="text-xs text-text-secondary">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-md">
+          <span className="truncate font-medium text-foreground" title={r.name}>{r.name}</span>
+          <span className="truncate text-xs text-text-secondary">
             {r.key || "no key"} · {r.hierarchical ? "hierarchical" : "flat"}
           </span>
         </div>
@@ -388,9 +397,9 @@ export function TaxonomiesScreen() {
         title="Taxonomies"
         description="Topics and tags attached to entries. Terms nest when hierarchical."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
             <Select value={taxonomyId} onValueChange={pickTaxonomy}>
-              <SelectTrigger className="w-52">
+              <SelectTrigger className="w-full min-w-0 sm:w-52" aria-label="Taxonomy">
                 <SelectValue placeholder="Select taxonomy" />
               </SelectTrigger>
               <SelectContent>
@@ -415,7 +424,6 @@ export function TaxonomiesScreen() {
       />
       <StatsBar stats={stats} />
       <Toolbar>
-        <div />
         <SearchInput value={search} onChange={setSearch} placeholder="Search taxonomies…" />
       </Toolbar>
       {loading ? (
@@ -452,13 +460,15 @@ export function TaxonomiesScreen() {
               title={`Terms${activeTaxonomy ? ` · ${activeTaxonomy.name}` : ""}`}
               description="Slug is unique per taxonomy."
             >
-              <div className="mb-3 flex items-center gap-2">
+              <div className="mb-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <Input
                   value={termDraft.label}
                   onChange={(e) =>
                     setTermDraft((d) => ({ ...d, label: e.target.value }))
                   }
                   placeholder="New term label…"
+                  aria-label="New term label"
+                  className="min-w-0 sm:flex-1 sm:basis-40"
                   disabled={!taxonomyId}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -474,7 +484,7 @@ export function TaxonomiesScreen() {
                       setTermDraft((d) => ({ ...d, parentId: v === "none" ? "" : v }))
                     }
                   >
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-full min-w-0 sm:w-40" aria-label="Parent term">
                       <SelectValue placeholder="Parent" />
                     </SelectTrigger>
                     <SelectContent>
@@ -504,20 +514,21 @@ export function TaxonomiesScreen() {
               ) : (
                 <ul className="divide-y divide-border">
                   {terms.map((t) => (
-                    <li key={t.id} className="flex items-center justify-between py-2">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-sm font-medium text-foreground">
+                    <li key={t.id} className="flex min-w-0 items-center justify-between gap-2 py-2">
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className="break-words text-sm font-medium text-foreground">
                           {termById[t.parentId] ? `${termById[t.parentId].label} / ` : ""}
                           {t.label}
                         </span>
-                        <span className="font-mono text-xs text-text-secondary">
+                        <span className="truncate font-mono text-xs text-text-secondary" title={t.slug}>
                           {t.slug}
                         </span>
                       </div>
                       <Button
                         variant="ghost"
                         aria-label={`Delete term ${t.label}`}
-                        className="text-red-400 hover:bg-red-500/10"
+                        size="icon-sm"
+                        className="shrink-0 text-red-400 hover:bg-red-500/10 hover:text-red-400"
                         onClick={() => handleDeleteTerm(t)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -532,7 +543,7 @@ export function TaxonomiesScreen() {
               description="Attach this taxonomy's terms to an entry."
               action={
                 <Select value={entryId} onValueChange={pickEntry}>
-                  <SelectTrigger className="w-52">
+                  <SelectTrigger className="w-full min-w-0 sm:w-52" aria-label="Entry for term assignment">
                     <SelectValue placeholder="Select entry" />
                   </SelectTrigger>
                   <SelectContent>
@@ -556,16 +567,20 @@ export function TaxonomiesScreen() {
                       </span>
                     ) : (
                       assigned.map((a) => (
-                        <Badge key={`${a.entry_id}:${a.term_id}`} variant="info">
-                          {termById[a.term_id]?.label || a.term_id}
-                          <button
+                        <Badge key={`${a.entry_id}:${a.term_id}`} variant="info" className="max-w-full">
+                          <span className="min-w-0 truncate" title={termById[a.term_id]?.label || a.term_id}>
+                            {termById[a.term_id]?.label || a.term_id}
+                          </span>
+                          <Button
                             type="button"
-                            aria-label="Remove term"
-                            className="ml-1 inline-flex"
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={`Remove term ${termById[a.term_id]?.label || a.term_id}`}
+                            className="ml-1 size-5 text-current"
                             onClick={() => handleUnassign(a.term_id)}
                           >
                             <X className="h-3 w-3" />
-                          </button>
+                          </Button>
                         </Badge>
                       ))
                     )}

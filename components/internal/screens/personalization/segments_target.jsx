@@ -7,27 +7,31 @@ import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers"
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
-  EmptyState,
   ScreenHeader,
   SearchInput,
-  SectionCard,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { Badge } from "@geiger/ui/badge";
+import { Button } from "@geiger/ui/button";
 import { listVariants } from "@/lib/supabase/variants";
 import { listSlots } from "@/lib/supabase/slots";
 import { useProject } from "@/context/project-context";
+import {
+  EmptyPanel,
+  HowItWorks,
+  VariantCell,
+  VariantStatus,
+  clausesOf,
+} from "./personalization_kit";
 
-function clausesOf(rules) {
-  if (Array.isArray(rules)) return rules;
-  if (rules && typeof rules === "object" && Array.isArray(rules.all)) return rules.all;
-  if (rules && typeof rules === "object") return Object.entries(rules).map(([field, value]) => ({ field, op: "equals", value }));
-  return [];
-}
+const STEPS = [
+  { title: "Visitor arrives with a segment", body: "The caller passes the visitor's segment in the profile bag at decision time." },
+  { title: "Clauses compare with equals", body: "Each variant's segment clause is matched against it; variants without one serve every segment." },
+  { title: "Priority, then weight", body: "The highest-priority match wins; ties split by weight. Edit clauses under Targeting Rules." },
+];
 
-// Segment Targeting: variants whose rules match on `segment`, grouped by the
-// segment value they serve. Segments themselves are a Phase 5 concern — this
-// screen reads the segment clauses variants already carry.
+// Segment Targeting: variants whose rules match on `segment` (definitions live in Audiences, Phase 5).
 export function SegmentsTargetScreen() {
   const [variants, setVariants] = useState([]);
   const [slots, setSlots] = useState([]);
@@ -48,11 +52,16 @@ export function SegmentsTargetScreen() {
 
   const slotName = (id) => slots.find((s) => s.id === id)?.name || "—";
 
-  const segmented = useMemo(
+  const mappings = useMemo(
     () => variants
       .map((v) => ({ variant: v, segment: clausesOf(v.rules).find((c) => c.field === "segment")?.value || null }))
-      .filter((r) => r.segment && (!search || String(r.segment).toLowerCase().includes(search.toLowerCase()))),
-    [variants, search],
+      .filter((r) => r.segment),
+    [variants],
+  );
+
+  const segmented = useMemo(
+    () => mappings.filter((r) => !search || String(r.segment).toLowerCase().includes(search.toLowerCase())),
+    [mappings, search],
   );
 
   const stats = useMemo(() => {
@@ -67,16 +76,15 @@ export function SegmentsTargetScreen() {
   const columns = [
     {
       key: "segment", header: "Segment",
-      render: (r) => <span className="font-medium text-foreground">{String(r.segment)}</span>,
+      render: (r) => <Badge variant="info" className="max-w-[16rem] font-mono"><span className="truncate">{String(r.segment)}</span></Badge>,
     },
     {
       key: "variant", header: "Variant",
-      render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="text-sm text-foreground">{slotName(r.variant.slotId)}</span>
-          <span className="text-xs text-text-secondary">priority {r.variant.priority} · weight {r.variant.weight} · {r.variant.status}</span>
-        </div>
-      ),
+      render: (r) => <VariantCell variant={r.variant} slotName={slotName(r.variant.slotId)} />,
+    },
+    {
+      key: "status", header: "Status",
+      render: (r) => <VariantStatus status={r.variant.status} />,
     },
   ];
 
@@ -84,12 +92,9 @@ export function SegmentsTargetScreen() {
     <MainScreenWrapper>
       <ScreenHeader
         title="Segment Targeting"
-        description="Which segments each variant serves. Segment definitions live in Audiences (Phase 5); this screen reads the segment clauses on your variants."
+        description="Which segments each variant serves, read from the segment clauses on your variants."
       />
-      <StatsBar stats={stats} />
-      <SectionCard title="How it works" description="At decision time the visitor's segment is compared against each variant's segment clause (equals). Highest priority match wins; ties split by weight.">
-        <p className="text-sm text-text-secondary">Edit clauses under Targeting Rules. Variants without a segment clause serve every segment.</p>
-      </SectionCard>
+      <StatsBar stats={stats} columns={3} />
       <Toolbar>
         <span className="text-sm text-text-secondary">{segmented.length} mappings</span>
         <SearchInput value={search} onChange={setSearch} placeholder="Search segments…" />
@@ -101,9 +106,17 @@ export function SegmentsTargetScreen() {
           columns={columns}
           data={segmented}
           getRowKey={(r) => r.variant.id}
-          empty={<EmptyState icon={UsersRound} title="No segment targeting yet" description="Add a clause with key segment on any variant under Targeting Rules." />}
+          empty={
+            <EmptyPanel
+              icon={UsersRound}
+              title={mappings.length ? "No segments match your search" : "No segment targeting yet"}
+              description={mappings.length ? "Try a different segment value." : "Add a clause with key segment on any variant under Targeting Rules."}
+              action={mappings.length ? <Button variant="ghost" onClick={() => setSearch("")}>Clear search</Button> : null}
+            />
+          }
         />
       )}
+      <HowItWorks steps={STEPS} description="Segment definitions live in Audiences; this screen reads the clauses your variants already carry." />
     </MainScreenWrapper>
   );
 }

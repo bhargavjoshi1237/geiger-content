@@ -14,7 +14,7 @@ import {
   SearchInput,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -54,7 +54,7 @@ function TypeDialog({ initial, onClose, onSave }) {
   };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit content type" : "New content type"}</DialogTitle>
           <DialogDescription>
@@ -71,7 +71,7 @@ function TypeDialog({ initial, onClose, onSave }) {
               autoFocus
             />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Key" hint="Unique per project. Auto-filled from the name.">
               <Input
                 value={draft.key}
@@ -156,6 +156,13 @@ export function ContentTypesScreen() {
         value: String(Object.values(fieldCounts).reduce((a, b) => a + b, 0)),
         footer: "Across all types",
       },
+      {
+        label: "Avg. fields",
+        value: rows.length
+          ? (Object.values(fieldCounts).reduce((a, b) => a + b, 0) / rows.length).toFixed(1)
+          : "0",
+        footer: "Per type",
+      },
     ];
   }, [rows, fieldCounts]);
 
@@ -212,9 +219,9 @@ export function ContentTypesScreen() {
       key: "name",
       header: "Content type",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
-          <span className="text-xs text-text-secondary">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-md">
+          <span className="truncate font-medium text-foreground" title={r.name}>{r.name}</span>
+          <span className="truncate text-xs text-text-secondary">
             {r.key || "no key"} · {fieldCounts[r.id] ?? 0} fields
           </span>
         </div>
@@ -276,7 +283,6 @@ export function ContentTypesScreen() {
       />
       <StatsBar stats={stats} />
       <Toolbar>
-        <div />
         <SearchInput value={search} onChange={setSearch} placeholder="Search types…" />
       </Toolbar>
       {loading ? (
@@ -323,7 +329,7 @@ export function ContentTypesScreen() {
         />
       )}
       <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete content type</DialogTitle>
             <DialogDescription>
@@ -336,7 +342,7 @@ export function ContentTypesScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

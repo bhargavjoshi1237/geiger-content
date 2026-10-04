@@ -8,7 +8,7 @@ import {
   SettingRow,
   Field,
   EmptyState,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
@@ -140,9 +140,9 @@ export function VectorAudience({ projectId }) {
             {data.interests.map((item) => (
               <div
                 key={item.topic}
-                className="flex justify-between rounded-lg border border-border p-3 text-sm"
+                className="flex min-w-0 flex-wrap justify-between gap-2 rounded-lg border border-border p-3 text-sm"
               >
-                <span>{item.topic}</span>
+                <span className="min-w-0 break-words">{item.topic}</span>
                 <span className="text-text-secondary">
                   {item.signals} content signals
                 </span>
@@ -218,8 +218,8 @@ export function VectorAudience({ projectId }) {
                 className="rounded-lg border border-border p-4"
               >
                 <div className="flex justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-foreground">{item.title}</p>
+                  <div className="min-w-0">
+                    <p className="break-words font-medium text-foreground">{item.title}</p>
                     <p className="text-xs text-text-secondary">
                       {item.topic || "General"} · Self-declared
                     </p>
@@ -236,7 +236,7 @@ export function VectorAudience({ projectId }) {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm text-text-secondary">
+                <p className="mt-2 whitespace-pre-wrap break-words text-sm text-text-secondary">
                   {item.body}
                 </p>
               </div>

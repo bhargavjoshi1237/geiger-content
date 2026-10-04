@@ -13,12 +13,11 @@ import {
   SettingsList,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
+import { Switch } from "@geiger/ui/switch";
 
-// Static plugin registry. Enable toggles are in-memory React state on purpose:
-// installation lifecycle (OAuth, scopes, secrets) lands with a later phase,
-// so nothing here persists.
+// Static plugin registry; toggles are session-only state until the install lifecycle (OAuth, scopes, secrets) lands.
 const PLUGINS = [
   {
     id: "vercel-deploy",
@@ -89,10 +88,9 @@ export function AppsScreen() {
         description="Extend the workspace. Toggles are session-only until install lifecycle lands."
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
-        <div />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -106,6 +104,15 @@ export function AppsScreen() {
             icon={Plug}
             title="No plugins match your filters"
             description="Try clearing the search."
+            action={
+              <Button
+                variant="outline"
+                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                onClick={() => setSearch("")}
+              >
+                Clear search
+              </Button>
+            }
           />
         </div>
       ) : (
@@ -123,20 +130,18 @@ export function AppsScreen() {
                   description={p.description}
                   icon={Plug}
                   control={
-                    <Button
-                      size="sm"
-                      variant={on ? "default" : "outline"}
-                      className={
-                        on
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                      }
-                      onClick={() =>
-                        setEnabled((prev) => ({ ...prev, [p.id]: !prev[p.id] }))
-                      }
-                    >
-                      {on ? "Enabled" : "Enable"}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <span className="hidden text-xs text-text-secondary sm:inline">
+                        {on ? "Enabled" : "Off"}
+                      </span>
+                      <Switch
+                        checked={on}
+                        aria-label={`Enable ${p.name}`}
+                        onCheckedChange={() =>
+                          setEnabled((prev) => ({ ...prev, [p.id]: !prev[p.id] }))
+                        }
+                      />
+                    </div>
                   }
                 />
               );

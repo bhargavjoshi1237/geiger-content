@@ -7,7 +7,7 @@ import {
 import { Bell, Download, MessageSquare } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { SegmentedTabs } from "@/components/internal/shared/segmented_tabs";
+import { SegmentedTabs } from "@geiger/ui/segmented-tabs";
 import { Button } from "@geiger/ui/button";
 
 const NOTIFICATION_TABS = [

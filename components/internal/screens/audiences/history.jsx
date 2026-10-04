@@ -12,7 +12,7 @@ import {
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import {
   Select,
   SelectContent,
@@ -111,7 +111,7 @@ export function HistoryScreen() {
       key: "at",
       header: "Time",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span className="whitespace-nowrap text-sm text-text-secondary">
           {formatDateTime(r.at) || "—"}
         </span>
       ),
@@ -136,7 +136,7 @@ export function HistoryScreen() {
       key: "entry",
       header: "Entry",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span className="font-mono text-xs text-text-secondary">
           {r.entryId ? r.entryId.slice(0, 8) : "—"}
         </span>
       ),
@@ -146,7 +146,10 @@ export function HistoryScreen() {
       header: "Detail",
       align: "right",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span
+          className="ml-auto block max-w-[16rem] truncate text-sm text-text-secondary sm:max-w-sm"
+          title={contextSummary(r.context)}
+        >
           {contextSummary(r.context)}
         </span>
       ),
@@ -164,7 +167,7 @@ export function HistoryScreen() {
 
       <Toolbar>
         <Select value={profileId} onValueChange={setProfileId}>
-          <SelectTrigger className="w-72">
+          <SelectTrigger className="w-full sm:w-72">
             <SelectValue placeholder="Select a profile" />
           </SelectTrigger>
           <SelectContent>

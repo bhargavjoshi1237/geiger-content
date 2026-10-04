@@ -11,7 +11,7 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { listExperiments, listExperimentVariants } from "@/lib/supabase/experiments";
 import { useProject } from "@/context/project-context";
 
@@ -65,12 +65,12 @@ export function CollisionsScreen() {
   const columns = [
     {
       key: "entry", header: "Shared entry",
-      render: (c) => <span className="font-mono text-xs text-foreground">{c.entryId}</span>,
+      render: (c) => <span className="block max-w-[16rem] truncate font-mono text-xs text-foreground" title={c.entryId}>{c.entryId}</span>,
     },
     {
       key: "owners", header: "Claimed by",
       render: (c) => (
-        <span className="text-sm text-text-secondary">
+        <span className="block max-w-[20rem] whitespace-normal break-words text-sm text-text-secondary sm:max-w-lg">
           {c.owners.map((o) => `${o.experiment.name} (${o.arm.name})`).join(" · ")}
         </span>
       ),

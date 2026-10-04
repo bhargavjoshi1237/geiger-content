@@ -17,7 +17,7 @@ import {
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import {
   EVENT_TYPE_FILTER_OPTIONS,
@@ -98,12 +98,12 @@ export function EventsScreen() {
       key: "actor",
       header: "Actor",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-xs">
+          <span className="truncate font-medium text-foreground">
             {r.userId || r.anonymousId || "—"}
           </span>
           {r.userId && r.anonymousId ? (
-            <span className="text-xs text-text-secondary">
+            <span className="truncate text-xs text-text-secondary">
               via {r.anonymousId}
             </span>
           ) : null}
@@ -114,7 +114,7 @@ export function EventsScreen() {
       key: "entry",
       header: "Entry",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span className="font-mono text-xs text-text-secondary">
           {r.entryId ? r.entryId.slice(0, 8) : "—"}
         </span>
       ),
@@ -124,7 +124,7 @@ export function EventsScreen() {
       header: "Time",
       align: "right",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span className="whitespace-nowrap text-sm text-text-secondary">
           {formatDateTime(r.at) || "—"}
         </span>
       ),
@@ -141,7 +141,7 @@ export function EventsScreen() {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <FilterDropdown
             value={type}
             onValueChange={setType}

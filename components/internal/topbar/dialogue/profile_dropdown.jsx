@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,9 +28,11 @@ import {
   BookMarked,
   ExternalLink,
 } from "lucide-react";
-import { getUser } from "@/lib/supabase/user";
+import { getUser, invalidateUserCache } from "@/lib/supabase/user";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@geiger/ui/button";
+import { useOptionalProject } from "@/context/project-context";
+import { tabToSlug } from "@/lib/workspace/tabs";
 
 const itemBaseStyle =
   "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm cursor-default transition-colors outline-none";
@@ -37,15 +40,19 @@ const itemBaseStyle =
 const itemHoverStyle =
   "text-muted-foreground hover:bg-surface-hover focus:bg-surface-hover hover:text-foreground focus:text-foreground";
 
-export function ProfileDropdown({ children }) {
-  const [user, setUser] = useState(null);
+// `user` lets a caller that already resolved the session (the landing Header) skip the fetch.
+export function ProfileDropdown({ children, user: knownUser = null }) {
+  const [fetchedUser, setFetchedUser] = useState(null);
+  const user = knownUser || fetchedUser;
   const { theme, setTheme } = useTheme();
+  const project = useOptionalProject()?.project ?? null;
 
   useEffect(() => {
+    if (knownUser) return;
     getUser().then((u) => {
-      if (u) setUser(u);
+      if (u) setFetchedUser(u);
     });
-  }, []);
+  }, [knownUser]);
 
   const pfpUrl = user?.id
     ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/pfp/${user.id}/latest.jpg`
@@ -60,10 +67,20 @@ export function ProfileDropdown({ children }) {
     .toUpperCase()
     .slice(0, 2) || "U";
 
+  // Account surfaces belong to geiger-dash (plain anchors leave Content's basePath); Settings/Security are project tabs.
+  const settingsHref = project?.id ? `/project/${project.id}/${tabToSlug("General")}` : "";
+  const securityHref = project?.id ? `/project/${project.id}/${tabToSlug("Security")}` : "";
+
+  // The session is the suite-wide dash cookie, so signing out here signs out everywhere; dash owns /login.
   const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    window.location.assign("/");
+    try {
+      await createClient().auth.signOut();
+    } catch (e) {
+      console.error("[profile] sign out", e);
+    } finally {
+      invalidateUserCache();
+      window.location.href = "/login";
+    }
   };
 
   return (
@@ -128,25 +145,25 @@ export function ProfileDropdown({ children }) {
 
         <div className="bg-surface-dialog p-1.5">
           <DropdownMenuGroup>
-            <DropdownMenuItem
-              className={`${itemBaseStyle} ${itemHoverStyle}`}
-            >
-              <CircleUserRound className="size-4 text-muted-foreground" />
-              <span>Profile</span>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href="/profile">
+                <CircleUserRound className="size-4 text-muted-foreground" />
+                <span>Profile</span>
+              </a>
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              className={`${itemBaseStyle} ${itemHoverStyle}`}
-            >
-              <UsersRound className="size-4 text-muted-foreground" />
-              <span>Organization Settings</span>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href="/org">
+                <UsersRound className="size-4 text-muted-foreground" />
+                <span>Organization Settings</span>
+              </a>
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              className={`${itemBaseStyle} ${itemHoverStyle}`}
-            >
-              <Wallet className="size-4 text-muted-foreground" />
-              <span>Billing & Plans</span>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href="/billing">
+                <Wallet className="size-4 text-muted-foreground" />
+                <span>Billing &amp; Plans</span>
+              </a>
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
@@ -162,12 +179,14 @@ export function ProfileDropdown({ children }) {
               >
                 <ToggleGroupItem
                   value="light"
+                  aria-label="Light theme"
                   className="h-7 flex-1 justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-surface-active hover:text-foreground data-[state=on]:bg-surface-hover data-[state=on]:text-foreground"
                 >
                   <Sun className="size-3.5" />
                 </ToggleGroupItem>
                 <ToggleGroupItem
                   value="dark"
+                  aria-label="Dark theme"
                   className="h-7 flex-1 justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-surface-active hover:text-foreground data-[state=on]:bg-surface-hover data-[state=on]:text-foreground"
                 >
                   <Moon className="size-3.5" />
@@ -175,44 +194,48 @@ export function ProfileDropdown({ children }) {
               </ToggleGroup>
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              className={`${itemBaseStyle} ${itemHoverStyle}`}
-            >
-              <Settings className="size-4 text-muted-foreground" />
-              <span>Settings</span>
-            </DropdownMenuItem>
-
-            <DropdownMenuItem
-              className={`${itemBaseStyle} ${itemHoverStyle}`}
-            >
-              <ShieldCheck className="size-4 text-muted-foreground" />
-              <span>Security</span>
-            </DropdownMenuItem>
+            {/* Project-scoped tabs — nothing to point at without an open project. */}
+            {project?.id ? (
+              <>
+                <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+                  <Link href={settingsHref}>
+                    <Settings className="size-4 text-muted-foreground" />
+                    <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+                  <Link href={securityHref}>
+                    <ShieldCheck className="size-4 text-muted-foreground" />
+                    <span>Security</span>
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            ) : null}
           </DropdownMenuGroup>
 
           <DropdownMenuSeparator className="my-1 bg-border" />
 
           <DropdownMenuGroup>
-            <DropdownMenuItem
-              className={`${itemBaseStyle} ${itemHoverStyle}`}
-            >
-              <BookMarked className="size-4 text-muted-foreground" />
-              <span>Documentation</span>
-              <ExternalLink className="size-3 ml-auto text-text-secondary" />
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href="/docs">
+                <BookMarked className="size-4 text-muted-foreground" />
+                <span>Documentation</span>
+                <ExternalLink className="size-3 ml-auto text-text-secondary" />
+              </a>
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              className={`${itemBaseStyle} ${itemHoverStyle}`}
-            >
-              <MessageCircle className="size-4 text-muted-foreground" />
-              <span>Send Feedback</span>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href="mailto:feedback@geiger.studio">
+                <MessageCircle className="size-4 text-muted-foreground" />
+                <span>Send Feedback</span>
+              </a>
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              className={`${itemBaseStyle} ${itemHoverStyle}`}
-            >
-              <LifeBuoy className="size-4 text-muted-foreground" />
-              <span>Help & Support</span>
+            <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
+              <a href="mailto:help@geiger.studio">
+                <LifeBuoy className="size-4 text-muted-foreground" />
+                <span>Help &amp; Support</span>
+              </a>
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={handleSignOut}

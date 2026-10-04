@@ -2,7 +2,7 @@
 // Row data lives behind lib/supabase/*.js; screens start empty + loading.
 
 export const ASSIGNMENT_STATUS_MAP = {
-  Open: { label: "Open", variant: "neutral", dotClass: "bg-[#737373]" },
+  Open: { label: "Open", variant: "neutral", dotClass: "bg-text-tertiary" },
   "In progress": {
     label: "In progress",
     variant: "info",
@@ -22,7 +22,7 @@ export const ASSIGNMENT_PRIORITY_MAP = {
   Low: { label: "Low", variant: "neutral" },
   Normal: { label: "Normal", variant: "info" },
   High: { label: "High", variant: "purple" },
-  Urgent: { label: "Urgent", variant: "destructive" },
+  Urgent: { label: "Urgent", variant: "danger" },
 };
 
 export const ASSIGNMENT_PRIORITIES = Object.keys(ASSIGNMENT_PRIORITY_MAP);

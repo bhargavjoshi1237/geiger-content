@@ -17,7 +17,8 @@ import {
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { Button } from "@geiger/ui/button";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import {
   ACTION_MAP,
@@ -39,7 +40,10 @@ function DiffCell({ diff }) {
   const pairs = Object.entries(diff || {}).slice(0, 3);
   if (pairs.length === 0) return <span className="text-sm text-text-secondary">—</span>;
   return (
-    <span className="block max-w-64 truncate font-mono text-xs text-text-secondary">
+    <span
+      className="block max-w-64 truncate font-mono text-xs text-text-secondary"
+      title={pairs.map(([k, v]) => `${k}=${typeof v === "object" ? JSON.stringify(v) : v}`).join(" · ")}
+    >
       {pairs.map(([k, v]) => `${k}=${v}`).join(" · ")}
     </span>
   );
@@ -104,7 +108,7 @@ export function AuditLogsScreen() {
       key: "actor",
       header: "Actor",
       render: (e) => (
-        <span className="font-mono text-sm text-foreground">
+        <span className="whitespace-nowrap font-mono text-sm text-foreground">
           {shortId(e.actor)}
         </span>
       ),
@@ -127,7 +131,7 @@ export function AuditLogsScreen() {
       key: "entityId",
       header: "Record",
       render: (e) => (
-        <span className="font-mono text-xs text-text-secondary">
+        <span className="whitespace-nowrap font-mono text-xs text-text-secondary">
           {shortId(e.entityId)}
         </span>
       ),
@@ -149,7 +153,7 @@ export function AuditLogsScreen() {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <FilterDropdown
             value={entity}
             onValueChange={setEntity}
@@ -179,8 +183,21 @@ export function AuditLogsScreen() {
                   title={rows.length ? "No events match your filters" : "No audit events yet"}
                   description={
                     rows.length
-                      ? "Try clearing the search or picking a different entity."
+                      ? "Try a different search or entity."
                       : "Events appear here the moment anyone creates, edits, or deletes content."
+                  }
+                  action={
+                    rows.length ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSearch("");
+                          setEntity("all");
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    ) : null
                   }
                 />
               </div>

@@ -19,7 +19,7 @@ import {
   StatusPill,
   Toolbar,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
@@ -53,9 +53,7 @@ function parseRules(text) {
 }
 
 function PolicyDialog({ open, onOpenChange, initial, onSave }) {
-  // Form state initializes from `initial` on mount. Callers pass a distinct
-  // `key` per edited policy (and reset on submit for the create case), so no
-  // sync-on-open effect is needed.
+  // State seeds from `initial` on mount; callers remount per edit via `key`.
   const [name, setName] = useState(initial?.name || "");
   const [rulesText, setRulesText] = useState(
     initial ? JSON.stringify(initial.rules || {}, null, 2) : "{}",
@@ -84,7 +82,7 @@ function PolicyDialog({ open, onOpenChange, initial, onSave }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit policy" : "Create policy"}</DialogTitle>
           <DialogDescription>
@@ -93,16 +91,18 @@ function PolicyDialog({ open, onOpenChange, initial, onSave }) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <Field label="Name">
+          <Field label="Name" htmlFor="policy-name">
             <Input
+              id="policy-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Legal review required"
               autoFocus
             />
           </Field>
-          <Field label="Rules (JSON)">
+          <Field label="Rules (JSON)" htmlFor="policy-rules">
             <Textarea
+              id="policy-rules"
               value={rulesText}
               onChange={(e) => setRulesText(e.target.value)}
               rows={6}
@@ -110,8 +110,8 @@ function PolicyDialog({ open, onOpenChange, initial, onSave }) {
               placeholder='{"requiresApproval": true}'
             />
           </Field>
-          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border p-3">
-            <span>
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-surface-card p-3">
+            <span className="min-w-0">
               <span className="block text-sm font-medium text-foreground">
                 Enforced
               </span>
@@ -119,21 +119,14 @@ function PolicyDialog({ open, onOpenChange, initial, onSave }) {
                 Disabled policies are kept as drafts.
               </span>
             </span>
-            <Switch checked={enforced} onCheckedChange={setEnforced} />
+            <Switch checked={enforced} onCheckedChange={setEnforced} aria-label="Enforce policy" />
           </label>
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={submit}
-          >
+          <Button onClick={submit}>
             {initial ? "Save policy" : "Create policy"}
           </Button>
         </DialogFooter>
@@ -260,9 +253,9 @@ export function ContentPoliciesScreen() {
       key: "name",
       header: "Policy",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
-          <span className="text-xs text-text-secondary">
+        <div className="flex min-w-0 max-w-sm flex-col gap-1">
+          <span className="truncate font-medium text-foreground">{r.name}</span>
+          <span className="truncate text-xs text-text-secondary">
             {Object.keys(r.rules || {}).length}{" "}
             {(Object.keys(r.rules || {}).length === 1 ? "rule" : "rules")}
             {r.updatedAt ? ` · ${formatDate(r.updatedAt)}` : ""}
@@ -314,10 +307,7 @@ export function ContentPoliciesScreen() {
         title="Content Policies"
         description="Named editorial guardrails with JSON rules — enforced policies apply, disabled ones stay as drafts."
         actions={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setCreateOpen(true)}
-          >
+          <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" /> Create policy
           </Button>
         }
@@ -349,16 +339,19 @@ export function ContentPoliciesScreen() {
                   title={rows.length ? "No policies match your filters" : "No policies yet"}
                   description={
                     rows.length
-                      ? "Try clearing the search, or create a new policy."
+                      ? "Try a different search, or create a new policy."
                       : "Create your first content policy to guard publishing."
                   }
                   action={
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                      onClick={() => setCreateOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" /> Create policy
-                    </Button>
+                    rows.length ? (
+                      <Button variant="outline" onClick={() => setSearch("")}>
+                        Clear search
+                      </Button>
+                    ) : (
+                      <Button onClick={() => setCreateOpen(true)}>
+                        <Plus className="h-4 w-4" /> Create policy
+                      </Button>
+                    )
                   }
                 />
               </div>
@@ -387,7 +380,7 @@ export function ContentPoliciesScreen() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete policy</DialogTitle>
             <DialogDescription>
@@ -403,7 +396,7 @@ export function ContentPoliciesScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

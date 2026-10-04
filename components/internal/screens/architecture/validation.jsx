@@ -5,17 +5,8 @@ import { CheckCheck, RefreshCw } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
-import {
-  DataTable,
-  EmptyState,
-  ScreenHeader,
-  SearchInput,
-  SectionCard,
-  StatsBar,
-  StatusPill,
-  Toolbar,
-} from "@/components/internal/shared/screen_kit";
-import { Badge } from "@geiger/ui/badge";
+import { DataTable, EmptyState, ScreenHeader, SearchInput, SectionCard, StatsBar, StatusPill, Toolbar } from "@geiger/ui/screen-kit";
+import { SegmentedTabs } from "@geiger/ui/segmented-tabs";
 import { Button } from "@geiger/ui/button";
 import { listContent } from "@/lib/supabase/content";
 import { listContentTypes, listFieldsByType } from "@/lib/supabase/types";
@@ -23,9 +14,9 @@ import { useProject } from "@/context/project-context";
 import { validateEntryData } from "./constants";
 
 const ISSUE_STATUS_MAP = {
-  error: { label: "Invalid", variant: "destructive", dotClass: "bg-red-400" },
+  error: { label: "Invalid", variant: "danger", dotClass: "bg-red-400" },
   ok: { label: "Valid", variant: "success", dotClass: "bg-emerald-400" },
-  untyped: { label: "No schema", variant: "neutral", dotClass: "bg-[#737373]" },
+  untyped: { label: "No schema", variant: "neutral", dotClass: "bg-text-tertiary" },
 };
 
 // Read-only audit: every entry's `data` checked against its type's field
@@ -138,6 +129,11 @@ export function ValidationScreen() {
         footer: "Fail a field rule",
       },
       {
+        label: "No schema",
+        value: String(issues.filter((i) => i.kind === "untyped").length),
+        footer: "Entry type has no match",
+      },
+      {
         label: "Rules",
         value: String(rules.length),
         footer: "Across all types",
@@ -151,9 +147,9 @@ export function ValidationScreen() {
       key: "entry",
       header: "Entry",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.entry.title}</span>
-          <span className="text-xs text-text-secondary">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-md">
+          <span className="truncate font-medium text-foreground" title={r.entry.title}>{r.entry.title}</span>
+          <span className="truncate text-xs text-text-secondary">
             /{r.entry.slug} · {r.entry.type}
           </span>
         </div>
@@ -169,6 +165,7 @@ export function ValidationScreen() {
     {
       key: "message",
       header: "Problem",
+      className: "min-w-48 max-w-md whitespace-normal break-words",
       render: (r) => (
         <span className="text-sm text-text-secondary">{r.message}</span>
       ),
@@ -200,7 +197,7 @@ export function ValidationScreen() {
       key: "constraints",
       header: "Constraints",
       render: (r) => (
-        <span className="max-w-64 truncate font-mono text-xs text-text-secondary">
+        <span className="block max-w-64 truncate font-mono text-xs text-text-secondary" title={JSON.stringify(r.field.validation || {})}>
           {Object.keys(r.field.validation || {}).length
             ? JSON.stringify(r.field.validation)
             : "none"}
@@ -222,18 +219,14 @@ export function ValidationScreen() {
       />
       <StatsBar stats={stats} />
       <Toolbar>
-        <div className="flex items-center gap-2">
-          {["all", "error", "untyped"].map((v) => (
-            <Badge
-              key={v}
-              variant={filter === v ? "info" : "neutral"}
-              className="cursor-pointer"
-              onClick={() => setFilter(v)}
-            >
-              {v === "all" ? "All" : ISSUE_STATUS_MAP[v].label}
-            </Badge>
-          ))}
-        </div>
+        <SegmentedTabs
+          value={filter}
+          onChange={setFilter}
+          tabs={["all", "error", "untyped"].map((value) => ({
+            value,
+            label: value === "all" ? "All" : ISSUE_STATUS_MAP[value].label,
+          }))}
+        />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -262,7 +255,7 @@ export function ValidationScreen() {
               </div>
             }
           />
-          <SectionCard
+          <SectionCard bare
             title="Rule catalog"
             description="Every field constraint currently enforced."
           >

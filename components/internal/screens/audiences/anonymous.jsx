@@ -18,7 +18,7 @@ import {
   StatsBar,
   Toolbar,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -49,12 +49,12 @@ function ResolveDialog({ open, onOpenChange, target, onResolve }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[85vh] w-[calc(100%-2rem)] overflow-y-auto bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Resolve identity</DialogTitle>
           <DialogDescription>
             Merge anonymous visitor{" "}
-            <span className="font-medium text-foreground">
+            <span className="font-medium text-foreground break-all">
               {target?.primaryIdentifier}
             </span>{" "}
             into a known profile. Aliases, traits and events carry over.
@@ -79,8 +79,7 @@ function ResolveDialog({ open, onOpenChange, target, onResolve }) {
         </div>
         <DialogFooter>
           <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            variant="ghost"
             onClick={() => onOpenChange(false)}
           >
             Cancel
@@ -164,8 +163,8 @@ export function AnonymousScreen() {
       key: "identifier",
       header: "Anonymous ID",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-sm">
+          <span className="truncate font-medium text-foreground">
             {r.primaryIdentifier || "—"}
           </span>
           <span className="text-xs text-text-secondary">
@@ -178,7 +177,7 @@ export function AnonymousScreen() {
       key: "active",
       header: "Last active",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span className="whitespace-nowrap text-sm text-text-secondary">
           {formatDate(r.updatedAt) || "—"}
         </span>
       ),
@@ -210,10 +209,9 @@ export function AnonymousScreen() {
         description="Unresolved visitors with a single alias. Resolve one into a known profile when they log in or identify."
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
-        <div />
         <SearchInput
           value={search}
           onChange={setSearch}

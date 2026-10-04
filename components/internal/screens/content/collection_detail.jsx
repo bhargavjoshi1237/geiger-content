@@ -16,7 +16,7 @@ import {
   Field,
   SearchInput,
   SectionCard,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
@@ -58,7 +58,7 @@ function OverviewSection({ collection, onPatch }) {
               onValueChange={(v) => patch({ status: v })}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue/>
               </SelectTrigger>
               <SelectContent>
                 {Object.keys(COLLECTION_STATUS_MAP).map((s) => (

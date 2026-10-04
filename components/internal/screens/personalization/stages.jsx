@@ -2,19 +2,18 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Map } from "lucide-react";
+import { Map, X } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
-  EmptyState,
   ScreenHeader,
   SearchInput,
   SectionCard,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -26,9 +25,9 @@ import {
 } from "@geiger/ui/select";
 import { TOPIC_STAGES, listTopicStages, setStage } from "@/lib/supabase/topics";
 import { useProject } from "@/context/project-context";
+import { EmptyPanel, StageMix } from "./personalization_kit";
 
-// Topic Journey Stages: the User -> Topic -> Stage -> Recommended Content
-// model. Viewer over content.topic_stages with inline stage/score editing.
+// Topic Journey Stages: User -> Topic -> Stage -> Recommended Content, with inline stage editing.
 export function StagesScreen() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -80,9 +79,9 @@ export function StagesScreen() {
     {
       key: "topic", header: "Profile → Topic",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.topicLabel || "—"}</span>
-          <span className="truncate text-xs text-text-secondary">{r.profileId || "anonymous"}</span>
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-sm">
+          <span className="truncate font-medium text-foreground">{r.topicLabel || "—"}</span>
+          <span className="block max-w-[16rem] truncate font-mono text-xs text-text-secondary">{r.profileId || "anonymous"}</span>
         </div>
       ),
     },
@@ -90,16 +89,16 @@ export function StagesScreen() {
       key: "stage", header: "Stage",
       render: (r) => (
         <Select value={r.stage} onValueChange={(v) => handleStageChange(r, v)}>
-          <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-8 w-32 capitalize" aria-label="Stage"><SelectValue/></SelectTrigger>
           <SelectContent>
-            {TOPIC_STAGES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            {TOPIC_STAGES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
           </SelectContent>
         </Select>
       ),
     },
     {
-      key: "score", header: "Score",
-      render: (r) => <span className="text-sm text-text-secondary">{Number(r.score).toFixed(2)}</span>,
+      key: "score", header: "Score", align: "right", className: "tabular-nums text-text-secondary",
+      render: (r) => Number(r.score).toFixed(2),
     },
   ];
 
@@ -109,16 +108,31 @@ export function StagesScreen() {
         title="Topic Journey Stages"
         description="Where each profile sits on each topic — unaware, curious, engaged, advocate — feeding recommendations."
       />
-      <StatsBar stats={stats} />
-      <SectionCard title="About stages" description="Stages advance as profiles consume topic-tagged content. Taxonomy terms (Phase 3) will replace free-text topic labels; until then topic_label is the stable key.">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-text-secondary">Filter by profile:</span>
-          <Input value={profileFilter} onChange={(e) => setProfileFilter(e.target.value)} placeholder="profile id…" className="h-8 max-w-xs" />
-          {profileFilter && <Button variant="ghost" size="sm" onClick={() => setProfileFilter("")}>Clear</Button>}
-        </div>
-      </SectionCard>
+      <StatsBar stats={stats} columns={3} />
       <Toolbar>
-        <span className="text-sm text-text-secondary">{filtered.length} journeys</span>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="relative w-full sm:w-64">
+            <Input
+              value={profileFilter}
+              onChange={(e) => setProfileFilter(e.target.value)}
+              placeholder="Filter by profile id…"
+              aria-label="Filter by profile id"
+              className="h-9 pr-9 font-mono text-xs"
+            />
+            {profileFilter ? (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                aria-label="Clear profile filter"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-secondary"
+                onClick={() => setProfileFilter("")}
+              >
+                <X />
+              </Button>
+            ) : null}
+          </div>
+          <span className="text-sm text-text-secondary">{filtered.length} journeys</span>
+        </div>
         <SearchInput value={search} onChange={setSearch} placeholder="Search topics, stages…" />
       </Toolbar>
       {loading ? (
@@ -128,9 +142,24 @@ export function StagesScreen() {
           columns={columns}
           data={filtered}
           getRowKey={(r) => r.id}
-          empty={<EmptyState icon={Map} title={rows.length ? "No journeys match your filters" : "No topic journeys yet"} description={rows.length ? "Try clearing the search or filters." : "Stages appear as visitors consume topic-tagged content."} />}
+          empty={
+            <EmptyPanel
+              icon={Map}
+              title={rows.length ? "No journeys match your filters" : "No topic journeys yet"}
+              description={rows.length ? "Try clearing the search or filters." : "Stages appear as visitors consume topic-tagged content."}
+              action={rows.length ? <Button variant="ghost" onClick={() => { setSearch(""); setProfileFilter(""); }}>Clear filters</Button> : null}
+            />
+          }
         />
       )}
+      {rows.length ? (
+        <SectionCard
+          title="Stage mix"
+          description="Stages advance as profiles consume topic-tagged content. Free-text topic labels stay the stable key until taxonomy terms replace them."
+        >
+          <StageMix stages={rows} />
+        </SectionCard>
+      ) : null}
     </MainScreenWrapper>
   );
 }

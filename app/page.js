@@ -8,7 +8,8 @@ import {
   Smartphone,
   Workflow,
 } from "lucide-react";
-import Footer from "@/components/footer";
+import Footer from "@geiger/ui/footer";
+import { Button } from "@geiger/ui/button";
 import {
   Accordion,
   AccordionContent,
@@ -23,6 +24,21 @@ export const metadata = {
   description:
     "Create, organize, and manage content with your team in Geiger Content.",
 };
+
+// Suite-shared showcase backgrounds (same set as geiger-flow / geiger-forms).
+const showcaseBackgroundImages = [
+  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-00a586c62c8782e65c0a.jpg",
+  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/internal-brand-023-3291bb4c.jpg",
+  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-0ec1f3ba625f482c9dc3.jpg",
+  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-85923e7fafe00c9c0d1f.jpg",
+  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-8e2e88cff7f33224ddd7.jpg",
+  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-0a66efa21dd4b7e6c526.jpg",
+  "https://200rfrtp5x71tlmk.public.blob.vercel-storage.com/geiger-dash/cursor-assets/asset-cc24ca462279ca23250c.jpg",
+];
+
+function pickRandomShowcaseBackground() {
+  return showcaseBackgroundImages[Math.floor(Math.random() * showcaseBackgroundImages.length)];
+}
 
 const utilityCards = [
   {
@@ -90,6 +106,8 @@ const faqs = [
 ];
 
 export default function ContentLandingPage() {
+  const playgroundBg = pickRandomShowcaseBackground();
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-background text-foreground selection:bg-indigo-500/30 font-sans">
       <div className="fixed inset-0 z-0 bg-[linear-gradient(to_right,#80808030_1px,transparent_1px),linear-gradient(to_bottom,#80808030_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
@@ -106,21 +124,20 @@ export default function ContentLandingPage() {
               Geiger Content brings libraries, reusable content, and practical team
               workflows together so work stays easy to find and ready to use.
             </p>
-            <Link
-              href="/project"
-              className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 sm:text-base"
-            >
-              Open Content
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <Button asChild size="lg" className="rounded-full sm:text-base">
+              <Link href="/project">
+                Open Content
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </section>
 
-        <section className="mt-10 w-full sm:mt-16">
-          <ContentPlaygroundShowcase />
-        </section>
+        <div className="mx-auto my-10 w-[94%] sm:my-20 md:w-[80%]">
+          <ContentPlaygroundShowcase backgroundImage={playgroundBg} />
+        </div>
 
-        <section className="mx-auto mt-10 grid w-full max-w-6xl gap-4 px-4 sm:mt-20 sm:px-6 md:grid-cols-3">
+        <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 sm:px-6 md:grid-cols-3">
           {utilityCards.map(({ title, description, icon: Icon }) => (
             <article
               key={title}
@@ -135,7 +152,7 @@ export default function ContentLandingPage() {
 
         <section className="mx-auto mt-10 flex w-full max-w-6xl flex-col gap-6 px-4 sm:px-6 md:mt-16 md:flex-row">
           <div className="md:w-[35%]">
-            <h2 className="text-3xl font-semibold text-foreground">Questions & Answers</h2>
+            <h2 className="text-3xl font-semibold text-foreground">Questions &amp; Answers</h2>
           </div>
           <div className="md:w-[65%]">
             <Accordion type="single" collapsible className="w-full">
@@ -157,7 +174,7 @@ export default function ContentLandingPage() {
           </div>
         </section>
 
-     <section className="relative z-20 overflow-hidden px-4 py-16 sm:px-6 sm:py-24 lg:py-32">
+        <section className="relative z-20 overflow-hidden px-4 py-16 sm:px-6 sm:py-24 lg:py-32">
           <div className="container mx-auto relative z-10 flex flex-col items-center text-center">
             <h3 className="mb-4 text-xs font-semibold tracking-widest text-muted-foreground uppercase sm:text-sm">
               Open source from day one
@@ -166,19 +183,18 @@ export default function ContentLandingPage() {
               TRY GEIGER NOW
             </h2>
             <div className="flex w-full max-w-md flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-              <Link
-                href="/project"
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 sm:w-auto"
-              > Open Content
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <a
-                href="mailto:sales@geiger.studio"
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 sm:w-auto"
-              >
-                Contact Sales
-                <ArrowRight className="h-4 w-4" />
-              </a>
+              <Button asChild size="lg" className="w-full rounded-full sm:w-auto">
+                <Link href="/project">
+                  Open Content
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="w-full rounded-full sm:w-auto">
+                <a href="mailto:sales@geiger.studio">
+                  Contact Sales
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </Button>
             </div>
           </div>
         </section>

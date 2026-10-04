@@ -12,7 +12,7 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
@@ -255,11 +255,11 @@ export function StructuredEditorScreen() {
     <MainScreenWrapper>
       <ScreenHeader
         title="Structured Editor"
-        description="Edit entries.data field-by-field against the type schema."
+        description="Write and validate each entry against its content type."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
             <Select value={entryId} onValueChange={pickEntry}>
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-full min-w-0 sm:w-64" aria-label="Entry to edit">
                 <SelectValue placeholder="Select an entry" />
               </SelectTrigger>
               <SelectContent>
@@ -335,7 +335,7 @@ export function StructuredEditorScreen() {
           </SectionCard>
           <SectionCard
             title="Body"
-            description="Portable JSON blocks, stored as text. Legacy plain text loads as one paragraph."
+            description="Compose the entry with headings and paragraphs."
           >
             <BodyEditor
               doc={bodyDoc}

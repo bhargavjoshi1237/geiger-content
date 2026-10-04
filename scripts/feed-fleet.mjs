@@ -1,6 +1,6 @@
 // Fleet coordinator (runs on this machine, as the Aiven admin). Apply the queue tables first: `npm run vector:db:push`.
 //   node scripts/feed-fleet.mjs seed     # queue every crawl task + upload the local corpus/cursors (idempotent)
-//   node scripts/feed-fleet.mjs build    # worker login + one-file worker at data/feed-fleet/feed-worker.mjs
+//   node scripts/feed-fleet.mjs build    # worker login + one-file worker (with the public proxy list) at data/feed-fleet/feed-worker.mjs
 //   node scripts/feed-fleet.mjs status   # images, queue progress, live workers
 //   node scripts/feed-fleet.mjs pull     # copy fleet-collected images into the local manifest (for Feed Lab / simulator)
 //   node scripts/feed-fleet.mjs requeue  # retry blocked/failed tasks
@@ -13,6 +13,7 @@ import nextEnv from "@next/env";
 import pg from "pg";
 import { createArcticClient } from "../lib/feed/crawl/arctic.mjs";
 import { createFleetRepo, planTasks, runWorker, withLocalProgress } from "../lib/feed/crawl/fleet.mjs";
+import { fetchProxyLists } from "../lib/feed/crawl/proxies.mjs";
 import { DEFAULT_CORPUS_DIR, openStore, readManifest } from "../lib/feed/crawl/store.mjs";
 import { flattenHorizontals, loadTaxonomy } from "../lib/feed/taxonomy/index.mjs";
 import { connectionOptions } from "../lib/vector/connection.mjs";
@@ -70,6 +71,9 @@ async function build() {
   } finally {
     await check.end();
   }
+  // The whole public proxy list ships inside the worker; each run probes it in random order for working ones.
+  const proxies = await fetchProxyLists();
+  log(`embedding ${proxies.length} public proxies`);
   const esbuild = await import("esbuild");
   fs.mkdirSync(FLEET_DIR, { recursive: true });
   const outfile = path.join(FLEET_DIR, "feed-worker.mjs");
@@ -81,13 +85,13 @@ async function build() {
     format: "esm",
     target: "node18",
     external: ["pg-native"],
-    define: { __FEED_DB_URL__: JSON.stringify(workerUrl) },
+    define: { __FEED_DB_URL__: JSON.stringify(workerUrl), __FEED_PROXIES__: JSON.stringify(proxies) },
     // pg is CommonJS: give the ESM bundle a real require() for Node built-ins.
     banner: { js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);" },
     legalComments: "none",
     logLevel: "warning",
   });
-  log(`built ${path.relative(process.cwd(), outfile)} (${Math.round(fs.statSync(outfile).size / 1024)} KB) — copy it to each machine and run: node feed-worker.mjs`);
+  log(`built ${path.relative(process.cwd(), outfile)} (${Math.round(fs.statSync(outfile).size / 1024)} KB) — copy it to each machine and run: node feed-worker.mjs [--max-proxies 15]`);
   log("it contains the feed_worker password (crawl tables only) — don't commit or post it publicly");
 }
 

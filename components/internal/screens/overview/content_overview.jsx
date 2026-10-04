@@ -1,27 +1,38 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
+  Archive,
   ArrowRight,
-  Blocks,
   CalendarClock,
+  ChevronRight,
+  ClipboardCheck,
+  FilePenLine,
   FilePlus2,
-  FolderOpen,
+  Hourglass,
   Plus,
+  TextQuote,
 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
+  DataTable,
   EmptyState,
+  RollingNumber,
   ScreenHeader,
   SectionCard,
   StatsBar,
   StatusPill,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
-import { CONTENT_STATUS_MAP, formatDate } from "../content/constants";
+import { ActivityWidget, StatusMixWidget, PipelineWidget, TypeMixWidget } from "./overview_widgets";
+import {
+  CONTENT_STATUS_MAP,
+  CONTENT_TYPE_MAP,
+  formatDate,
+} from "../content/constants";
 import { getScreenContent } from "../screen_content";
 import { listContent } from "@/lib/supabase/content";
 import { listCollections } from "@/lib/supabase/collections";
@@ -29,15 +40,25 @@ import { listAssets } from "@/lib/supabase/assets";
 import { listSlots } from "@/lib/supabase/slots";
 import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { useProject } from "@/context/project-context";
-import { tabToSlug } from "@/lib/workspace/tabs";
+import { cn } from "@geiger/ui/lib/utils";
 
 const [OVERVIEW_DESCRIPTION] = getScreenContent("Overview");
 
-const SKELETON_COLUMNS = [
+const DAY_MS = 86400000;
+const STALE_DRAFT_DAYS = 30;
+
+const RECENT_COLUMNS = [
   { key: "entry", header: "Entry" },
   { key: "status", header: "Status" },
-  { key: "updated", header: "Updated" },
+  { key: "type", header: "Type" },
+  { key: "updated", header: "Updated", align: "right" },
 ];
+
+const toMs = (value) => {
+  if (!value) return null;
+  const ms = Date.parse(value);
+  return Number.isNaN(ms) ? null : ms;
+};
 
 function byRecencyDesc(a, b) {
   return String(b.updatedAt || b.createdAt || "").localeCompare(
@@ -45,30 +66,77 @@ function byRecencyDesc(a, b) {
   );
 }
 
-function EntryRow({ entry, onOpen }) {
+function countInWindow(rows, key, start, end) {
+  return rows.reduce((n, r) => {
+    const ms = toMs(r[key]);
+    return ms != null && ms >= start && ms < end ? n + 1 : n;
+  }, 0);
+}
+
+const pctOf = (part, total) => (total ? Math.round((part / total) * 100) : 0);
+
+// Header-right workspace summary, matching the events overview rhythm.
+function WorkspaceSummary({ items }) {
   return (
-    <li>
-      <button
-        type="button"
-        onClick={() => onOpen(entry.id)}
-        className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-surface-hover"
-      >
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">
-            {entry.title}
-          </p>
-          <p className="truncate text-xs text-text-secondary">
-            /{entry.slug} · {entry.type}
-            {entry.updatedAt ? ` · ${formatDate(entry.updatedAt)}` : ""}
-          </p>
+    <div className="grid w-full grid-cols-3 xl:w-auto">
+      {items.map((item, i) => (
+        <div
+          key={item.label}
+          className={cn(
+            "flex min-w-0 flex-col items-center px-4 first:pl-0 last:pr-0 sm:px-6",
+            i > 0 && "border-l border-border",
+          )}
+        >
+          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {item.label}
+          </span>
+          <RollingNumber
+            value={item.value}
+            className="mt-0.5 text-2xl font-bold text-foreground"
+          />
         </div>
-        <StatusPill
-          status={entry.status}
-          map={CONTENT_STATUS_MAP}
-          className="shrink-0"
-        />
-      </button>
-    </li>
+      ))}
+    </div>
+  );
+}
+
+function AttentionCard({ items, onOpen }) {
+  return (
+    <SectionCard
+      title="Needs attention"
+      description="Work waiting on someone across the workspace."
+    >
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Button
+              key={item.key}
+              type="button"
+              variant="ghost"
+              onClick={() => onOpen(item.tab)}
+              className="group h-auto min-w-0 justify-start gap-3.5 whitespace-normal rounded-xl p-3.5 text-left hover:bg-surface-card"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
+                <Icon className="h-[18px] w-[18px]" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-foreground">
+                  {item.label}
+                </span>
+                <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                  {item.hint}
+                </span>
+              </span>
+              <span className="shrink-0 text-xl font-bold tabular-nums text-foreground">
+                {item.value}
+              </span>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-secondary transition-colors group-hover:text-foreground" />
+            </Button>
+          );
+        })}
+      </div>
+    </SectionCard>
   );
 }
 
@@ -78,9 +146,9 @@ export function ContentOverviewScreen() {
   const [assets, setAssets] = useState([]);
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [asOf, setAsOf] = useState(0);
   const { projectId } = useProject();
-  const { setTab } = useWorkspaceUrl();
-  const router = useRouter();
+  const { setTab, openContentInTab } = useWorkspaceUrl();
 
   useEffect(() => {
     let alive = true;
@@ -95,6 +163,7 @@ export function ContentOverviewScreen() {
       setCollections(collectionRows ?? []);
       setAssets(assetRows ?? []);
       setSlots(slotRows ?? []);
+      setAsOf(Date.now());
       setLoading(false);
     });
     return () => {
@@ -102,14 +171,17 @@ export function ContentOverviewScreen() {
     };
   }, [projectId]);
 
-  // The list/detail swap lives on the All Content tab (?content=<id>), so open
-  // an entry by deep-linking there — setTab alone would drop the open record.
+  // The list/detail swap lives on the All Content tab, so open the entry there.
   const openEntry = (id) => {
     if (!projectId || !id) return;
-    router.push(
-      `/project/${projectId}/${tabToSlug("All Content")}?content=${encodeURIComponent(id)}`,
-    );
+    openContentInTab("All Content", id);
   };
+
+  const summary = [
+    { label: "Collections", value: String(collections.length) },
+    { label: "Slots", value: String(slots.length) },
+    { label: "Assets", value: String(assets.length) },
+  ];
 
   const stats = useMemo(() => {
     const total = entries.length;
@@ -117,12 +189,13 @@ export function ContentOverviewScreen() {
     const attention = entries.filter(
       (r) => r.status === "Draft" || r.status === "In review",
     ).length;
-    const pct = total ? Math.round((published / total) * 100) : 0;
+    const cur0 = asOf - 30 * DAY_MS;
+    const updated = countInWindow(entries, "updatedAt", cur0, asOf);
     return [
       {
         label: "Total entries",
         value: String(total),
-        footer: total ? `${pct}% published` : "No entries yet",
+        footer: total ? `${pctOf(published, total)}% published` : "No entries yet",
       },
       {
         label: "Published",
@@ -135,52 +208,80 @@ export function ContentOverviewScreen() {
         footer: "Needs attention",
       },
       {
-        label: "Assets",
-        value: String(assets.length),
-        footer: "Media files",
+        label: "Updated (30d)",
+        value: String(asOf ? updated : 0),
+        footer: "Entries edited recently",
       },
     ];
-  }, [entries, assets.length]);
+  }, [entries, asOf]);
 
   const recentEntries = useMemo(
-    () => [...entries].sort(byRecencyDesc).slice(0, 5),
+    () => [...entries].sort(byRecencyDesc).slice(0, 6),
     [entries],
   );
 
-  const needsAttention = useMemo(
-    () =>
-      entries
-        .filter((r) => r.status === "In review" || r.scheduledAt)
-        .sort(byRecencyDesc)
-        .slice(0, 5),
-    [entries],
-  );
+  const attentionItems = useMemo(() => {
+    const count = (fn) => entries.filter(fn).length;
+    const staleBefore = asOf - STALE_DRAFT_DAYS * DAY_MS;
+    return [
+      { key: "review", label: "In review", hint: "Awaiting approval", value: count((r) => r.status === "In review"), icon: ClipboardCheck, tab: "Review Queue" },
+      { key: "scheduled", label: "Scheduled", hint: "Queued to go live", value: count((r) => r.status === "Scheduled"), icon: CalendarClock, tab: "Scheduled" },
+      { key: "drafts", label: "Drafts", hint: "Not yet submitted", value: count((r) => r.status === "Draft"), icon: FilePenLine, tab: "Drafts" },
+      { key: "stale", label: "Stale drafts", hint: `Untouched for ${STALE_DRAFT_DAYS}+ days`, value: asOf ? count((r) => r.status === "Draft" && (toMs(r.updatedAt) ?? asOf) < staleBefore) : 0, icon: Hourglass, tab: "Drafts" },
+      { key: "excerpt", label: "Missing excerpt", hint: "No summary for cards and previews", value: count((r) => r.status !== "Archived" && !String(r.excerpt || "").trim()), icon: TextQuote, tab: "All Content" },
+      { key: "archived", label: "Archived", hint: "Out of delivery", value: count((r) => r.status === "Archived"), icon: Archive, tab: "Archived" },
+    ];
+  }, [entries, asOf]);
 
-  const scheduledCount = useMemo(
-    () => entries.filter((r) => r.scheduledAt).length,
-    [entries],
-  );
+  const recentColumns = [
+    {
+      key: "entry",
+      header: "Entry",
+      render: (r) => (
+        <div className="flex min-w-0 max-w-[14rem] flex-col gap-1 sm:max-w-md">
+          <span className="truncate font-medium text-foreground">{r.title || "Untitled"}</span>
+          <span className="truncate text-xs text-text-secondary">/{r.slug}</span>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      className: "whitespace-nowrap",
+      render: (r) => <StatusPill status={r.status} map={CONTENT_STATUS_MAP} />,
+    },
+    {
+      key: "type",
+      header: "Type",
+      render: (r) => (
+        <Badge variant={CONTENT_TYPE_MAP[r.type]?.variant || "neutral"}>{r.type}</Badge>
+      ),
+    },
+    {
+      key: "updated",
+      header: "Updated",
+      align: "right",
+      className: "whitespace-nowrap",
+      render: (r) => (
+        <span className="text-sm text-text-secondary">{formatDate(r.updatedAt) || "—"}</span>
+      ),
+    },
+  ];
+
+  const empty = !loading && entries.length === 0;
 
   return (
     <MainScreenWrapper>
       <ScreenHeader
         title="Overview"
         description={OVERVIEW_DESCRIPTION}
-        actions={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setTab("All Content")}
-          >
-            View all content <ArrowRight className="h-4 w-4" />
-          </Button>
-        }
+        actions={<WorkspaceSummary items={summary} />}
+
       />
 
       <StatsBar stats={stats} />
 
-      {loading ? (
-        <TableSkeleton columns={SKELETON_COLUMNS} />
-      ) : entries.length === 0 ? (
+      {empty ? (
         <div className="rounded-xl border border-border bg-surface-subtle">
           <EmptyState
             icon={FilePlus2}
@@ -198,66 +299,50 @@ export function ContentOverviewScreen() {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-text-secondary">
-            <span className="inline-flex items-center gap-1.5">
-              <FolderOpen className="h-3.5 w-3.5" />
-              {collections.length} collections
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Blocks className="h-3.5 w-3.5" />
-              {slots.length} slots
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <CalendarClock className="h-3.5 w-3.5" />
-              {scheduledCount} scheduled
-            </span>
+          <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-3">
+            <div className="min-w-0 xl:col-span-2">
+              <ActivityWidget entries={entries} asOf={asOf} loading={loading} />
+            </div>
+            <div className="min-w-0">
+              <StatusMixWidget entries={entries} loading={loading} />
+            </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <SectionCard
-              title="Recent entries"
-              description="Newest updates across the workspace."
-              action={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-text-secondary hover:text-foreground"
-                  onClick={() => setTab("All Content")}
-                >
-                  View all <ArrowRight className="h-4 w-4" />
-                </Button>
-              }
-            >
-              {recentEntries.length === 0 ? (
-                <p className="text-sm text-text-secondary">
-                  Nothing here yet.
-                </p>
-              ) : (
-                <ul className="divide-y divide-border">
-                  {recentEntries.map((r) => (
-                    <EntryRow key={r.id} entry={r} onOpen={openEntry} />
-                  ))}
-                </ul>
-              )}
-            </SectionCard>
-
-            <SectionCard
-              title="Needs attention"
-              description="Entries in review or waiting on a schedule."
-            >
-              {needsAttention.length === 0 ? (
-                <p className="text-sm text-text-secondary">
-                  Nothing waiting — every entry is published or still drafting.
-                </p>
-              ) : (
-                <ul className="divide-y divide-border">
-                  {needsAttention.map((r) => (
-                    <EntryRow key={r.id} entry={r} onOpen={openEntry} />
-                  ))}
-                </ul>
-              )}
-            </SectionCard>
+          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+            <PipelineWidget entries={entries} loading={loading} />
+            <TypeMixWidget entries={entries} loading={loading} />
           </div>
+
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="text-base font-semibold text-foreground">Recent entries</h3>
+                <p className="mt-0.5 text-sm text-text-secondary">
+                  Newest updates across the workspace.
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="shrink-0 text-text-secondary hover:text-foreground"
+                onClick={() => setTab("All Content")}
+              >
+                View all <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+            {loading ? (
+              <TableSkeleton columns={RECENT_COLUMNS} rows={5} />
+            ) : (
+              <DataTable
+                columns={recentColumns}
+                data={recentEntries}
+                getRowKey={(r) => r.id}
+                onRowClick={(r) => openEntry(r.id)}
+              />
+            )}
+          </section>
+
+          {loading ? null : <AttentionCard items={attentionItems} onOpen={setTab} />}
         </>
       )}
     </MainScreenWrapper>

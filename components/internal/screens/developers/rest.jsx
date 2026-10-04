@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Braces } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
@@ -11,12 +12,14 @@ import {
   SearchInput,
   SectionCard,
   StatsBar,
+  StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { Badge } from "@geiger/ui/badge";
+import { Button } from "@geiger/ui/button";
+import { CodeBlock } from "./code_block";
 
-// Static route inventory for the v1 delivery REST surface. Rows marked
-// "planned" are Phase 2 work — the doc ships ahead of the handler so
-// integrators can build against the contract.
+// Static v1 delivery route inventory; "Planned" rows are Phase 2 contracts documented ahead of their handlers.
 const ENDPOINTS = [
   {
     id: "list-entries",
@@ -81,10 +84,22 @@ const ENDPOINTS = [
   },
 ];
 
-const METHOD_STYLES = {
-  GET: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-  POST: "bg-sky-400/10 text-sky-400 border-sky-400/20",
+const METHOD_VARIANTS = { GET: "success", POST: "info" };
+
+const STATE_MAP = {
+  Live: { label: "Live", variant: "success", dotClass: "bg-emerald-400" },
+  Planned: { label: "Planned", variant: "neutral" },
 };
+
+async function copyText(text, label) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(`${label} copied to clipboard.`);
+  } catch (e) {
+    console.error("[rest.copy]", e);
+    toast.error("Couldn't copy to clipboard.");
+  }
+}
 
 export function RestApiScreen() {
   const [search, setSearch] = useState("");
@@ -127,29 +142,32 @@ export function RestApiScreen() {
       key: "method",
       header: "Method",
       render: (r) => (
-        <span
-          className={`inline-flex rounded-md border px-2 py-0.5 font-mono text-xs font-medium ${METHOD_STYLES[r.method] || "border-border text-muted-foreground"}`}
-        >
+        <Badge variant={METHOD_VARIANTS[r.method] || "neutral"} className="font-mono">
           {r.method}
-        </span>
+        </Badge>
       ),
     },
     {
       key: "path",
       header: "Endpoint",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-mono text-sm text-foreground">{r.path}</span>
+        <Button
+          variant="ghost"
+          aria-pressed={selectedId === r.id}
+          aria-label={`Show ${r.method} ${r.path} examples`}
+          onClick={() => setSelectedId(r.id)}
+          className="h-auto w-full min-w-0 flex-col items-start gap-1 whitespace-normal p-2 text-left data-[pressed=true]:bg-surface-active"
+          data-pressed={selectedId === r.id}
+        >
+          <span className="break-all font-mono text-sm text-foreground">{r.path}</span>
           <span className="text-xs text-text-secondary">{r.title}</span>
-        </div>
+        </Button>
       ),
     },
     {
       key: "state",
       header: "State",
-      render: (r) => (
-        <span className="text-sm text-text-secondary">{r.state}</span>
-      ),
+      render: (r) => <StatusPill status={r.state} map={STATE_MAP} />,
     },
   ];
 
@@ -160,10 +178,9 @@ export function RestApiScreen() {
         description="Versioned delivery endpoints, their contracts, and copy-paste examples."
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
-        <div />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -177,40 +194,60 @@ export function RestApiScreen() {
             icon={Braces}
             title="No endpoints match your filters"
             description="Try clearing the search."
+            action={
+              <Button
+                variant="outline"
+                className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                onClick={() => setSearch("")}
+              >
+                Clear search
+              </Button>
+            }
           />
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
           <DataTable
+
             columns={columns}
             data={filtered}
             getRowKey={(r) => r.id}
-            onRowClick={(r) => setSelectedId(r.id)}
           />
           {selected ? (
             <SectionCard
+
               title={selected.title}
-              description={`${selected.method} ${selected.path} · ${selected.state}`}
+              description={selected.description}
+              action={<StatusPill status={selected.state} map={STATE_MAP} />}
             >
               <div className="grid gap-4">
-                <p className="text-sm text-text-secondary">
-                  {selected.description}
-                </p>
-                <div>
-                  <p className="mb-1 text-xs font-medium text-muted-foreground">
-                    Request
-                  </p>
-                  <pre className="overflow-auto rounded-lg border border-border bg-surface-subtle p-3 font-mono text-xs text-foreground">
-                    {selected.exampleRequest}
-                  </pre>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Badge
+                    variant={METHOD_VARIANTS[selected.method] || "neutral"}
+                    className="font-mono"
+                  >
+                    {selected.method}
+                  </Badge>
+                  <span className="min-w-0 truncate font-mono text-sm text-foreground">
+                    {selected.path}
+                  </span>
                 </div>
-                <div>
-                  <p className="mb-1 text-xs font-medium text-muted-foreground">
-                    Response
-                  </p>
-                  <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-surface-subtle p-3 font-mono text-xs text-foreground">
-                    {selected.exampleResponse}
-                  </pre>
+                <div className="grid gap-1.5">
+                  <p className="text-sm font-semibold text-foreground">Request</p>
+                  <CodeBlock
+                    code={selected.exampleRequest}
+                    onCopy={() => copyText(selected.exampleRequest, "Request")}
+                    copyLabel="Copy example request"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <p className="text-sm font-semibold text-foreground">Response</p>
+                  <CodeBlock
+                    code={selected.exampleResponse}
+                    onCopy={() => copyText(selected.exampleResponse, "Response")}
+                    copyLabel="Copy example response"
+                    preClassName="max-h-64"
+                  />
                 </div>
               </div>
             </SectionCard>

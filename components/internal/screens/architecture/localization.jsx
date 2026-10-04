@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Languages, Pencil, Plus, Trash2 } from "lucide-react";
+import { Globe, Languages, Pencil, Plus, SearchX, Star, Trash2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
@@ -15,7 +15,7 @@ import {
   SectionCard,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -74,7 +74,7 @@ function LocaleDialog({ initial, onClose, onSave }) {
   };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit locale" : "New locale"}</DialogTitle>
           <DialogDescription>
@@ -82,7 +82,7 @@ function LocaleDialog({ initial, onClose, onSave }) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Code" htmlFor="locale-code" hint="BCP-47, e.g. en, de, en-IN.">
               <Input
                 id="locale-code"
@@ -101,7 +101,7 @@ function LocaleDialog({ initial, onClose, onSave }) {
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Fallback code" hint="Used when a variant is missing.">
               <Input
                 value={draft.fallbackCode}
@@ -115,7 +115,7 @@ function LocaleDialog({ initial, onClose, onSave }) {
                 onValueChange={(v) => set("isDefault")(v === "yes")}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue/>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="no">No</SelectItem>
@@ -209,6 +209,11 @@ export function LocalizationScreen() {
         value: String(missingDefault),
         footer: "Roots without a default variant",
       },
+      {
+        label: "Slug roots",
+        value: String(coverage.length),
+        footer: "Distinct content roots",
+      },
     ];
   }, [locales, defaultLocale, coverage]);
 
@@ -256,9 +261,12 @@ export function LocalizationScreen() {
       key: "code",
       header: "Locale",
       render: (r) => (
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-foreground">{r.label}</span>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-medium text-foreground">{r.label}</span>
           <Badge variant={r.isDefault ? "success" : "neutral"}>{r.code}</Badge>
+          {r.isDefault ? (
+            <span className="text-xs text-text-tertiary">Default</span>
+          ) : null}
         </div>
       ),
     },
@@ -292,7 +300,7 @@ export function LocalizationScreen() {
               ? []
               : [
                   {
-                    icon: Pencil,
+                    icon: Star,
                     label: "Make default",
                     onSelect: async () => {
                       const prev = locales;
@@ -373,57 +381,80 @@ export function LocalizationScreen() {
         }
       />
       <StatsBar stats={stats} />
-      <Toolbar>
-        <div />
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Search slug roots…"
-        />
-      </Toolbar>
       {loading ? (
         <TableSkeleton columns={localeColumns} />
       ) : (
-        <div className="space-y-5">
-          <DataTable
-            columns={localeColumns}
-            data={locales}
-            getRowKey={(r) => r.id}
-            empty={
-              <div className="rounded-xl border border-border bg-surface-subtle">
-                <EmptyState
-                  icon={Languages}
-                  title="No locales yet"
-                  description="Register the languages this project publishes in."
-                  action={
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                      onClick={() => {
-                        setEditing(null);
-                        setDialogOpen(true);
-                      }}
-                    >
-                      <Plus className="h-4 w-4" /> New locale
-                    </Button>
-                  }
-                />
-              </div>
-            }
-          />
-          <SectionCard
+        <div className="space-y-8">
+          <SectionCard bare
+
+            title="Locales"
+            description="Languages this project publishes in, with their fallback chain."
+          >
+            <DataTable
+              columns={localeColumns}
+              data={locales}
+              getRowKey={(r) => r.id}
+              empty={
+                <div className="rounded-xl border border-border bg-surface-subtle">
+                  <EmptyState
+                    icon={Languages}
+                    title="No locales yet"
+                    description="Register the languages this project publishes in."
+                    action={
+                      <Button
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={() => {
+                          setEditing(null);
+                          setDialogOpen(true);
+                        }}
+                      >
+                        <Plus className="h-4 w-4" /> New locale
+                      </Button>
+                    }
+                  />
+                </div>
+              }
+            />
+          </SectionCard>
+          <SectionCard bare
+
             title="Coverage"
             description="Which locale variants exist for each slug root."
           >
-            <DataTable
-              columns={coverageColumns}
-              data={filteredCoverage}
-              getRowKey={(r) => r.root}
-              empty={
-                <p className="text-sm text-text-secondary">
-                  No entries yet — coverage appears once content exists.
-                </p>
-              }
-            />
+            <div className="space-y-4">
+              <Toolbar>
+                <SearchInput
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Search slug roots…"
+                />
+              </Toolbar>
+              <DataTable
+                columns={coverageColumns}
+                data={filteredCoverage}
+                getRowKey={(r) => r.root}
+                empty={
+                  <div className="rounded-xl border border-border bg-surface-subtle">
+                    <EmptyState
+                      icon={coverage.length ? SearchX : Globe}
+                      title={coverage.length ? "No roots match your search" : "No entries yet"}
+                      description={
+                        coverage.length
+                          ? "Try a different slug root."
+                          : "Coverage appears once content exists."
+                      }
+                      action={
+                        coverage.length ? (
+                          <Button variant="outline" onClick={() => setSearch("")}>
+                            Clear search
+                          </Button>
+                        ) : undefined
+                      }
+                    />
+                  </div>
+                }
+              />
+            </div>
           </SectionCard>
         </div>
       )}

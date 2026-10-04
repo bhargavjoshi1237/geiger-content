@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@geiger/ui/table";
-import { cn } from "@/lib/utils";
+import { cn } from "@geiger/ui/lib/utils";
 
 const ALIGN_CLASS = {
   left: "text-left",

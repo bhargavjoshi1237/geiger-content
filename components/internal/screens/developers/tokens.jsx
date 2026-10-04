@@ -17,10 +17,12 @@ import {
   ScreenHeader,
   SearchInput,
   StatsBar,
+  StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
+import { Toggle } from "@geiger/ui/toggle";
 import {
   Dialog,
   DialogContent,
@@ -58,7 +60,7 @@ function tokenState(t) {
 const TOKEN_STATE_MAP = {
   Active: { label: "Active", variant: "success", dotClass: "bg-emerald-400" },
   Expired: { label: "Expired", variant: "purple", dotClass: "bg-violet-300" },
-  Revoked: { label: "Revoked", variant: "outline", dotClass: "bg-[#525252]" },
+  Revoked: { label: "Revoked", variant: "neutral", dotClass: "bg-text-tertiary" },
 };
 
 function CreateTokenDialog({ open, onOpenChange, onCreate }) {
@@ -92,7 +94,7 @@ function CreateTokenDialog({ open, onOpenChange, onCreate }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Mint API token</DialogTitle>
           <DialogDescription>
@@ -100,8 +102,9 @@ function CreateTokenDialog({ open, onOpenChange, onCreate }) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <Field label="Name">
+          <Field label="Name" htmlFor="token-name">
             <Input
+              id="token-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Storefront read-only"
@@ -113,25 +116,24 @@ function CreateTokenDialog({ open, onOpenChange, onCreate }) {
               {AVAILABLE_SCOPES.map((s) => {
                 const on = scopes.includes(s);
                 return (
-                  <Button
+                  <Toggle
                     key={s}
                     size="sm"
-                    variant={on ? "default" : "outline"}
-                    className={
-                      on
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                        : "border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-                    }
-                    onClick={() => toggleScope(s)}
+                    variant="outline"
+                    pressed={on}
+                    onPressedChange={() => toggleScope(s)}
+                    aria-label={`Allow ${s}`}
+                    className="px-3 font-mono text-xs"
                   >
                     {s}
-                  </Button>
+                  </Toggle>
                 );
               })}
             </div>
           </Field>
-          <Field label="Expires at (optional)">
+          <Field label="Expires at (optional)" htmlFor="token-expires-at">
             <Input
+              id="token-expires-at"
               type="date"
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
@@ -262,9 +264,9 @@ export function TokensScreen() {
       key: "name",
       header: "Token",
       render: (r) => (
-        <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 max-w-sm flex-col gap-1">
           <span className="font-medium text-foreground">{r.name}</span>
-          <span className="font-mono text-xs text-text-secondary">
+          <span className="whitespace-normal break-words font-mono text-xs text-text-secondary">
             {(r.scopes || []).join(" ") || "no scopes"}
           </span>
         </div>
@@ -273,16 +275,7 @@ export function TokensScreen() {
     {
       key: "state",
       header: "State",
-      render: (r) => {
-        const state = tokenState(r);
-        const entry = TOKEN_STATE_MAP[state];
-        return (
-          <span className="inline-flex items-center gap-1.5 text-sm text-text-secondary">
-            <span className={`h-2 w-2 rounded-full ${entry.dotClass}`} />
-            {entry.label}
-          </span>
-        );
-      },
+      render: (r) => <StatusPill status={tokenState(r)} map={TOKEN_STATE_MAP} />,
     },
     {
       key: "lastUsed",
@@ -382,7 +375,7 @@ export function TokensScreen() {
       />
 
       <Dialog open={!!plainToken} onOpenChange={(open) => !open && setPlainToken(null)}>
-        <DialogContent className="sm:max-w-md bg-background">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Copy your token</DialogTitle>
             <DialogDescription>
@@ -408,7 +401,7 @@ export function TokensScreen() {
         open={!!revokeTarget}
         onOpenChange={(open) => !open && setRevokeTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Revoke token</DialogTitle>
             <DialogDescription>
@@ -421,7 +414,7 @@ export function TokensScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleRevoke(revokeTarget)}
             >
               <Trash2 className="h-4 w-4" /> Revoke

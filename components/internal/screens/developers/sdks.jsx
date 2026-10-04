@@ -9,8 +9,9 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
+import { CodeBlock } from "./code_block";
 
 // Static install + usage snippets for the delivery API. No registry, no
 // network — copy-paste reference only.
@@ -85,12 +86,13 @@ export function SdksScreen() {
         description="Install the client libraries and start reading published content."
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         {SNIPPETS.map((s) => (
           <SectionCard
             key={s.id}
+
             title={s.title}
             description={s.install || "No install — plain HTTP."}
             action={
@@ -115,9 +117,7 @@ export function SdksScreen() {
                 <Code2 className="h-3.5 w-3.5" /> Usage
               </p>
             )}
-            <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-surface-subtle p-3 font-mono text-xs text-foreground">
-              {s.code}
-            </pre>
+            <CodeBlock code={s.code} preClassName="max-h-64" />
           </SectionCard>
         ))}
       </div>

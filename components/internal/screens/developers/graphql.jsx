@@ -2,23 +2,23 @@
 
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Network, Play } from "lucide-react";
+import { Loader2, Network, Play } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   EmptyState,
   Field,
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { LoadingArea } from "@geiger/ui";
+import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Textarea } from "@geiger/ui/textarea";
+import { CodeBlock } from "./code_block";
 
-// Tester for the hand-rolled v1 GraphQL placeholder
-// (`app/api/content/v1/graphql/route.js`). NOT a full GraphQL spec — only the
-// two documented shapes resolve; everything else returns `errors`.
+// Tester for the hand-rolled v1 GraphQL placeholder (app/api/content/v1/graphql) — only two shapes resolve, the rest return `errors`.
 const SAMPLES = [
   {
     label: "List entries",
@@ -80,6 +80,17 @@ export function GraphqlApiScreen() {
     return "0";
   }, [result]);
 
+  const copyResult = async () => {
+    if (!result) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(result.body, null, 2));
+      toast.success("Result copied to clipboard.");
+    } catch (e) {
+      console.error("[graphql-tester.copy]", e);
+      toast.error("Couldn't copy to clipboard.");
+    }
+  };
+
   const stats = useMemo(
     () => [
       { label: "Endpoint", value: "v1", footer: "Placeholder, not full spec" },
@@ -104,55 +115,69 @@ export function GraphqlApiScreen() {
             onClick={run}
             disabled={running}
           >
-            <Play className="h-4 w-4" /> {running ? "Running…" : "Run query"}
+            {running ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+            {running ? "Running…" : "Run query"}
           </Button>
         }
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard
+
           title="Query"
           description="Only `{ entries { … } }` and `{ entry(slug:) { … } }` resolve."
-          action={
-            <div className="flex gap-2">
+        >
+          <div className="grid gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-text-secondary">Samples</span>
               {SAMPLES.map((s) => (
                 <Button
                   key={s.label}
-                  variant="ghost"
-                  size="sm"
-                  className="text-text-secondary hover:text-foreground"
+                  variant="outline"
+                  size="xs"
+                  className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
                   onClick={() => setQuery(s.query)}
                 >
                   {s.label}
                 </Button>
               ))}
             </div>
-          }
-        >
-          <Field label="GraphQL query">
-            <Textarea
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              rows={8}
-              className="font-mono text-xs"
-              placeholder='{ entries { id title slug status } }'
-            />
-          </Field>
-          <p className="break-all font-mono text-xs text-text-secondary">
-            POST {GRAPHQL_PATH}
-          </p>
+            <Field label="GraphQL query" htmlFor="graphql-query">
+              <Textarea
+                id="graphql-query"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                rows={8}
+                className="font-mono text-xs"
+                placeholder="{ entries { id title slug status } }"
+              />
+            </Field>
+            <Field label="Endpoint">
+              <CodeBlock wrap code={`POST ${GRAPHQL_PATH}`} />
+            </Field>
+          </div>
         </SectionCard>
 
         <SectionCard
+
           title="Result"
-          description={
-            result ? `${result.status} · ${result.ms} ms` : "Results appear here."
+          description={result ? "JSON from the last query." : "Results appear here."}
+          action={
+            result && !running ? (
+              <Badge variant={result.status >= 200 && result.status < 300 ? "success" : "danger"}>
+                {result.status} · {result.ms} ms
+              </Badge>
+            ) : null
           }
         >
           {running ? (
-            <TableSkeleton columns={[{ key: "result", header: "Result" }]} />
+            <LoadingArea size={40} label="Running query" />
           ) : !result ? (
             <EmptyState
               icon={Network}
@@ -160,9 +185,12 @@ export function GraphqlApiScreen() {
               description="Write a query and press Run query."
             />
           ) : (
-            <pre className="max-h-96 overflow-auto rounded-lg border border-border bg-surface-subtle p-3 font-mono text-xs text-foreground">
-              {JSON.stringify(result.body, null, 2)}
-            </pre>
+            <CodeBlock
+              code={JSON.stringify(result.body, null, 2)}
+              onCopy={copyResult}
+              copyLabel="Copy result"
+              preClassName="max-h-96"
+            />
           )}
         </SectionCard>
       </div>

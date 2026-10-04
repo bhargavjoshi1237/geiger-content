@@ -2,21 +2,21 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Flag, Plus, Trash2 } from "lucide-react";
+import { Flag, Pause, Play, Plus, Trash2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
-  EmptyState,
   Field,
   ScreenHeader,
   SearchInput,
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { ActionMenu } from "@geiger/ui/action-menu";
+import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -42,14 +42,9 @@ import {
 } from "@/lib/supabase/variants";
 import { listContent } from "@/lib/supabase/content";
 import { useProject } from "@/context/project-context";
+import { ACTIVE_STATUS_MAP, EmptyPanel } from "./personalization_kit";
 
-const RULE_STATUS_MAP = {
-  Active: { label: "Active", variant: "success", dotClass: "bg-emerald-400" },
-  Paused: { label: "Paused", variant: "neutral", dotClass: "bg-[#737373]" },
-};
-
-// Boosts & Exclusions: editorial ranking rules. Boosts multiply an entry's
-// recommendation score by weight; excludes remove it from ranking entirely.
+// Boosts & Exclusions: boosts multiply an entry's recommendation score by weight; excludes drop it from ranking.
 export function BoostsScreen() {
   const [rows, setRows] = useState([]);
   const [entries, setEntries] = useState([]);
@@ -134,19 +129,21 @@ export function BoostsScreen() {
     {
       key: "entry", header: "Entry",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{entryTitle(r.entryId)}</span>
-          <span className="text-xs text-text-secondary">{r.ruleType === "boost" ? `boost × ${r.weight}` : "excluded"}</span>
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-sm">
+          <span className="truncate font-medium text-foreground">{entryTitle(r.entryId)}</span>
+          <span className="text-xs text-text-secondary tabular-nums">{r.ruleType === "boost" ? `boost × ${r.weight}` : "excluded"}</span>
         </div>
       ),
     },
     {
       key: "type", header: "Rule",
-      render: (r) => <span className="text-sm capitalize text-text-secondary">{r.ruleType}</span>,
+      render: (r) => (
+        <Badge variant={r.ruleType === "exclude" ? "danger" : "info"} className="capitalize">{r.ruleType}</Badge>
+      ),
     },
     {
       key: "status", header: "Status",
-      render: (r) => <StatusPill status={r.status} map={RULE_STATUS_MAP} />,
+      render: (r) => <StatusPill status={r.status} map={ACTIVE_STATUS_MAP} />,
     },
     {
       key: "actions", header: "", align: "right", className: "text-right",
@@ -154,7 +151,7 @@ export function BoostsScreen() {
         <ActionMenu
           label="Rule actions"
           items={[
-            { label: r.status === "Active" ? "Pause" : "Activate", onSelect: () => toggleStatus(r) },
+            { icon: r.status === "Active" ? Pause : Play, label: r.status === "Active" ? "Pause" : "Activate", onSelect: () => toggleStatus(r) },
             { separator: true },
             { icon: Trash2, label: "Delete", variant: "destructive", onSelect: () => handleDelete(r) },
           ]}
@@ -174,7 +171,7 @@ export function BoostsScreen() {
           </Button>
         }
       />
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
       <Toolbar>
         <span className="text-sm text-text-secondary">{filtered.length} rules</span>
         <SearchInput value={search} onChange={setSearch} placeholder="Search entries…" />
@@ -187,21 +184,23 @@ export function BoostsScreen() {
           data={filtered}
           getRowKey={(r) => r.id}
           empty={
-            <EmptyState
+            <EmptyPanel
               icon={Flag}
               title={rows.length ? "No rules match your search" : "No ranking rules yet"}
               description={rows.length ? "Try clearing the search." : "Boost priority content or exclude entries from recommendations."}
-              action={
+              action={rows.length ? (
+                <Button variant="ghost" onClick={() => setSearch("")}>Clear search</Button>
+              ) : (
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setCreateOpen(true)}>
                   <Plus className="h-4 w-4" /> Create rule
                 </Button>
-              }
+              )}
             />
           }
         />
       )}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md bg-background">
+        <DialogContent className="max-h-[85vh] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create ranking rule</DialogTitle>
             <DialogDescription>Boosts multiply the score; excludes remove the entry from ranking.</DialogDescription>
@@ -215,10 +214,10 @@ export function BoostsScreen() {
                 </SelectContent>
               </Select>
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Rule type">
                 <Select value={ruleType} onValueChange={setRuleType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue/></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="boost">Boost</SelectItem>
                     <SelectItem value="exclude">Exclude</SelectItem>

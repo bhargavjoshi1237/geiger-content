@@ -2,20 +2,19 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Copy, Pencil, Plus, TestTubes, Trash2 } from "lucide-react";
+import { ChevronsRight, Copy, Plus, TestTubes, Trash2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
-  EmptyState,
   Field,
   ScreenHeader,
   SearchInput,
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { ActionMenu } from "@geiger/ui/action-menu";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -35,18 +34,15 @@ import {
   updateExperiment,
 } from "@/lib/supabase/experiments";
 import { useProject } from "@/context/project-context";
+import {
+  EXPERIMENT_STATUS_MAP,
+  EmptyCard,
+  ExperimentCell,
+  STATUS_FILTER_OPTIONS,
+  matchesFilters,
+} from "./parts";
 
-export const EXPERIMENT_STATUS_MAP = {
-  Draft: { label: "Draft", variant: "neutral", dotClass: "bg-[#737373]" },
-  Running: { label: "Running", variant: "success", dotClass: "bg-emerald-400" },
-  Paused: { label: "Paused", variant: "info", dotClass: "bg-sky-400" },
-  Completed: { label: "Completed", variant: "outline", dotClass: "bg-[#525252]" },
-};
-
-const STATUS_FILTER_OPTIONS = [
-  { value: "all", label: "All Statuses" },
-  ...Object.keys(EXPERIMENT_STATUS_MAP).map((s) => ({ value: s, label: s })),
-];
+export { EXPERIMENT_STATUS_MAP } from "./parts";
 
 // All Experiments: full CRUD over content.experiments.
 export function ExperimentsListScreen() {
@@ -69,11 +65,7 @@ export function ExperimentsListScreen() {
   }, [projectId]);
 
   const filtered = useMemo(
-    () => rows.filter((r) => {
-      if (status !== "all" && r.status !== status) return false;
-      if (search && !`${r.name} ${r.goalMetric}`.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    }),
+    () => rows.filter((r) => matchesFilters(r, search, status, `${r.name} ${r.goalMetric}`)),
     [rows, search, status],
   );
 
@@ -146,12 +138,7 @@ export function ExperimentsListScreen() {
   const columns = [
     {
       key: "name", header: "Experiment",
-      render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
-          <span className="text-xs text-text-secondary">goal: {r.goalMetric} · holdout {r.holdoutPct}%</span>
-        </div>
-      ),
+      render: (r) => <ExperimentCell name={r.name} meta={`Goal: ${r.goalMetric} · holdout ${r.holdoutPct}%`} />,
     },
     {
       key: "status", header: "Status",
@@ -163,7 +150,7 @@ export function ExperimentsListScreen() {
         <ActionMenu
           label={`Actions for ${r.name}`}
           items={[
-            { icon: Pencil, label: "Advance status", onSelect: () => cycleStatus(r) },
+            { icon: ChevronsRight, label: "Advance status", onSelect: () => cycleStatus(r) },
             { icon: Copy, label: "Duplicate", onSelect: () => handleDuplicate(r) },
             { separator: true },
             { icon: Trash2, label: "Delete", variant: "destructive", onSelect: () => handleDelete(r) },
@@ -172,6 +159,9 @@ export function ExperimentsListScreen() {
       ),
     },
   ];
+
+  const filtersActive = Boolean(search) || status !== "all";
+  const clearFilters = () => { setSearch(""); setStatus("all"); };
 
   return (
     <MainScreenWrapper>
@@ -186,7 +176,9 @@ export function ExperimentsListScreen() {
       />
       <StatsBar stats={stats} />
       <Toolbar>
-        <FilterDropdown value={status} onValueChange={setStatus} options={STATUS_FILTER_OPTIONS} height="h-9" />
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterDropdown value={status} onValueChange={setStatus} options={STATUS_FILTER_OPTIONS} height="h-9" />
+        </div>
         <SearchInput value={search} onChange={setSearch} placeholder="Search experiments…" />
       </Toolbar>
       {loading ? (
@@ -197,28 +189,41 @@ export function ExperimentsListScreen() {
           data={filtered}
           getRowKey={(r) => r.id}
           empty={
-            <EmptyState
+            <EmptyCard
               icon={TestTubes}
               title={rows.length ? "No experiments match your filters" : "No experiments yet"}
               description={rows.length ? "Try clearing the search or filters." : "Create your first experiment to start testing content choices."}
               action={
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-4 w-4" /> Create experiment
-                </Button>
+                rows.length && filtersActive ? (
+                  <Button variant="outline" onClick={clearFilters}>Clear filters</Button>
+                ) : (
+                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setCreateOpen(true)}>
+                    <Plus className="h-4 w-4" /> Create experiment
+                  </Button>
+                )
               }
             />
           }
         />
       )}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md bg-background">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create experiment</DialogTitle>
             <DialogDescription>Add variants and traffic next — this just opens the test.</DialogDescription>
           </DialogHeader>
-          <Field label="Name">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Hero headline test" autoFocus />
-          </Field>
+          <div className="grid gap-4">
+            <Field label="Name" htmlFor="experiment-name">
+              <Input
+                id="experiment-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
+                placeholder="e.g. Hero headline test"
+                autoFocus
+              />
+            </Field>
+          </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleCreate}>Create experiment</Button>

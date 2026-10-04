@@ -8,7 +8,7 @@ import {
   Field,
   ScreenHeader,
   SectionCard,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
@@ -87,19 +87,19 @@ export function EdgeScreen() {
             <p className="text-sm text-text-secondary">Run a decision to see the result here.</p>
           ) : (
             <div className="grid gap-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-border bg-surface-card p-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="min-w-0 rounded-lg border border-border bg-surface-card p-3">
                   <p className="text-xs text-text-secondary">Entry</p>
                   <p className="truncate text-sm font-medium text-foreground">{result.entryId || "—"}</p>
                 </div>
-                <div className="rounded-lg border border-border bg-surface-card p-3">
+                <div className="min-w-0 rounded-lg border border-border bg-surface-card p-3">
                   <p className="text-xs text-text-secondary">Variant</p>
                   <p className="truncate text-sm font-medium text-foreground">{result.variantId || "—"}</p>
                 </div>
               </div>
               <div className="rounded-lg border border-border bg-surface-card p-3">
                 <p className="text-xs text-text-secondary">Reason</p>
-                <p className="text-sm text-foreground">{result.reason}</p>
+                <p className="break-words text-sm text-foreground">{result.reason}</p>
               </div>
             </div>
           )}

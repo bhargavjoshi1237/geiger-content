@@ -15,7 +15,7 @@ import {
   SectionCard,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import { ActionMenu } from "@geiger/ui/action-menu";
+import { LoadingArea } from "@geiger/ui";
 import {
   createBlock,
   createInstance,
@@ -49,7 +50,6 @@ import { getUser } from "@/lib/supabase/user";
 import { useProject } from "@/context/project-context";
 import { keyify, newId } from "./constants";
 
-import { LoadingArea } from "@geiger/ui";
 const EMPTY_DRAFT = { key: "", name: "", schemaText: "{}" };
 
 function BlockDialog({ initial, onClose, onSave }) {
@@ -84,7 +84,7 @@ function BlockDialog({ initial, onClose, onSave }) {
   };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit block" : "New block"}</DialogTitle>
           <DialogDescription>
@@ -92,7 +92,7 @@ function BlockDialog({ initial, onClose, onSave }) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Name" htmlFor="block-name">
               <Input
                 id="block-name"
@@ -214,6 +214,11 @@ export function BlocksScreen() {
         value: String(entries.length),
         footer: "Can host instances",
       },
+      {
+        label: "With schema",
+        value: String(blocks.filter((b) => Object.keys(b.schema || {}).length).length),
+        footer: "Declare a data shape",
+      },
     ],
     [blocks, instances, entries, entryById, entryId],
   );
@@ -303,9 +308,9 @@ export function BlocksScreen() {
       key: "name",
       header: "Block",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
-          <span className="text-xs text-text-secondary">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-md">
+          <span className="truncate font-medium text-foreground" title={r.name}>{r.name}</span>
+          <span className="truncate text-xs text-text-secondary">
             {r.key || "no key"} · {Object.keys(r.schema || {}).length} schema keys
           </span>
         </div>
@@ -360,7 +365,6 @@ export function BlocksScreen() {
       />
       <StatsBar stats={stats} />
       <Toolbar>
-        <div />
         <SearchInput value={search} onChange={setSearch} placeholder="Search blocks…" />
       </Toolbar>
       {loading ? (
@@ -376,7 +380,11 @@ export function BlocksScreen() {
                 <EmptyState
                   icon={Component}
                   title={blocks.length ? "No blocks match your filters" : "No blocks yet"}
-                  description="Blocks are reusable chunks — hero, quote, CTA — with a JSON schema."
+                  description={
+                    blocks.length
+                      ? "Try clearing the search."
+                      : "Blocks are reusable chunks — hero, quote, CTA — with a JSON schema."
+                  }
                   action={
                     <Button
                       className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -395,57 +403,62 @@ export function BlocksScreen() {
           <SectionCard
             title="Instances on entry"
             description="Pin a block to the selected entry. Position follows list order."
-            action={
-              <div className="flex items-center gap-2">
-                <Select value={entryId} onValueChange={pickEntry}>
-                  <SelectTrigger className="w-56">
-                    <SelectValue placeholder="Select an entry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {entries.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value="" onValueChange={handleAddInstance}>
-                  <SelectTrigger className="w-44">
-                    <SelectValue placeholder="Pin a block…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {blocks.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            }
           >
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Select value={entryId} onValueChange={pickEntry}>
+                <SelectTrigger className="w-full sm:w-64" aria-label="Entry">
+                  <SelectValue placeholder="Select an entry" />
+                </SelectTrigger>
+                <SelectContent>
+                  {entries.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value=""
+                onValueChange={handleAddInstance}
+                disabled={!entryId || !blocks.length}
+              >
+                <SelectTrigger className="w-full sm:w-48" aria-label="Pin a block">
+                  <SelectValue placeholder="Pin a block…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {blocks.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {loadingInstances ? (
-              <LoadingArea className="py-6" label="Loading instances" />
+              <LoadingArea size={40} className="py-8" label="Loading instances" />
             ) : instances.length === 0 ? (
-              <p className="text-sm text-text-secondary">
-                No instances on this entry yet — pin a block above.
+              <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-text-secondary">
+                {entryId
+                  ? "No instances on this entry yet — pin a block above."
+                  : "Create an entry first to pin blocks to it."}
               </p>
             ) : (
               <ul className="divide-y divide-border">
                 {instances.map((inst) => (
-                  <li key={inst.id} className="flex items-center justify-between py-2">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-medium text-foreground">
+                  <li key={inst.id} className="flex items-center justify-between gap-3 py-2.5">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="truncate text-sm font-medium text-foreground">
                         {blockById[inst.blockId]?.name || "Unknown block"}
                       </span>
-                      <span className="font-mono text-xs text-text-secondary">
+                      <span className="truncate font-mono text-xs text-text-secondary">
                         position {inst.position} · {JSON.stringify(inst.data)}
                       </span>
                     </div>
                     <Button
                       variant="ghost"
                       aria-label={`Remove instance of ${blockById[inst.blockId]?.name || "block"}`}
-                      className="text-red-400 hover:bg-red-500/10"
+                      size="icon-sm"
+                      className="shrink-0 text-red-400 hover:bg-red-500/10 hover:text-red-400"
                       onClick={() => handleRemoveInstance(inst)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -468,7 +481,7 @@ export function BlocksScreen() {
         />
       )}
       <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete block</DialogTitle>
             <DialogDescription>
@@ -481,7 +494,7 @@ export function BlocksScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDeleteBlock(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

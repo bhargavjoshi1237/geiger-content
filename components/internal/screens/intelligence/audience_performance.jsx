@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Download, TrendingUp } from "lucide-react";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { DataTable, ScreenHeader, SectionCard, StatsBar } from "@/components/internal/shared/screen_kit";
+import { DataTable, ScreenHeader, SectionCard, StatsBar } from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
@@ -18,9 +18,6 @@ import {
   CartesianGrid,
   Cell,
   CHART_COLORS,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   GRID_STROKE,
   Line,
   LineChart,
@@ -30,6 +27,7 @@ import {
   XAxis,
   YAxis,
 } from "./charts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@geiger/ui/chart";
 
 const DEFAULT_TREND_SERIES = [
   { key: "marketers", label: "Marketers" },
@@ -78,7 +76,7 @@ export function AudiencePerformanceScreen() {
               <CartesianGrid stroke={GRID_STROKE} strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip content={<ChartTooltipContent/>} />
               {series.map((s) => (
                 <Line key={s.key} type="monotone" dataKey={s.key} stroke={`var(--color-${s.key})`} strokeWidth={2.5} dot={false} />
               ))}
@@ -88,7 +86,7 @@ export function AudiencePerformanceScreen() {
         <SectionCard title="Journey mix" description="Where active profiles sit by stage.">
           <ChartContainer config={{ mix: { label: "Profiles" } }} className="h-[300px] w-full">
             <PieChart>
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip content={<ChartTooltipContent/>} />
               <Pie data={d.stages} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={3} strokeWidth={0}>
                 {d.stages.map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
@@ -118,7 +116,7 @@ export function AudiencePerformanceScreen() {
             <CartesianGrid stroke={GRID_STROKE} strokeDasharray="3 3" horizontal={false} />
             <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
             <YAxis type="category" dataKey="segment" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={110} />
-            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartTooltip content={<ChartTooltipContent/>} />
             <Bar dataKey="engagement" radius={[0, 8, 8, 0]} maxBarSize={22}>
               {d.segments.map((_, i) => (
                 <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
@@ -127,7 +125,7 @@ export function AudiencePerformanceScreen() {
           </BarChart>
         </ChartContainer>
       </SectionCard>
-      <SectionCard title="Segment leaderboard" description="Activation opportunities by reusable group.">
+      <SectionCard bare title="Segment leaderboard" description="Activation opportunities by reusable group.">
         <DataTable
           columns={[
             { key: "segment", header: "Segment", render: (r) => <span className="font-medium text-foreground">{r.segment}</span> },

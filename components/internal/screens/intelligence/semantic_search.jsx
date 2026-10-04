@@ -6,7 +6,7 @@ import {
   ScreenHeader,
   SectionCard,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Input } from "@geiger/ui/input";
 import { Button } from "@geiger/ui/button";
 import {
@@ -60,7 +60,7 @@ export function SemanticSearchScreen() {
           onSubmit={search}
           className="flex flex-col gap-4 sm:flex-row sm:items-end"
         >
-          <Field label="Search" htmlFor="semantic-query" className="flex-1">
+          <Field label="Search" htmlFor="semantic-query" className="min-w-0 flex-1">
             <Input
               id="semantic-query"
               value={query}
@@ -69,10 +69,10 @@ export function SemanticSearchScreen() {
               maxLength={2000}
             />
           </Field>
-          <Field label="Sources">
+          <Field label="Sources" htmlFor="semantic-sources">
             <Select value={kind} onValueChange={setKind}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue />
+              <SelectTrigger id="semantic-sources" className="w-full sm:w-40">
+                <SelectValue/>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All sources</SelectItem>

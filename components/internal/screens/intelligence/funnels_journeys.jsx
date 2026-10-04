@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Download } from "lucide-react";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { DataTable, ScreenHeader, SectionCard, StatsBar } from "@/components/internal/shared/screen_kit";
+import { DataTable, ScreenHeader, SectionCard, StatsBar } from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
@@ -17,9 +17,6 @@ import {
   CartesianGrid,
   Cell,
   CHART_COLORS,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   ComposedChart,
   Funnel,
   FunnelChart,
@@ -30,6 +27,7 @@ import {
   XAxis,
   YAxis,
 } from "./charts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@geiger/ui/chart";
 
 export function FunnelsJourneysScreen() {
   const [range, setRange] = useState("30d");
@@ -67,7 +65,7 @@ export function FunnelsJourneysScreen() {
         <SectionCard title="Acquisition funnel" description="Visit to outcome across the flagship journey." className="lg:col-span-2">
           <ChartContainer config={{ value: { label: "Users", color: CHART_COLORS[0] } }} className="h-[320px] w-full">
             <FunnelChart>
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip content={<ChartTooltipContent/>} />
               <Funnel dataKey="value" data={d.funnel} isAnimationActive>
                 <LabelList position="right" fill="var(--foreground)" stroke="none" fontSize={11} dataKey="name" />
               </Funnel>
@@ -109,13 +107,13 @@ export function FunnelsJourneysScreen() {
             <CartesianGrid stroke={GRID_STROKE} strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="week" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
             <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartTooltip content={<ChartTooltipContent/>} />
             <Bar dataKey="entered" fill="var(--color-entered)" radius={[8, 8, 0, 0]} maxBarSize={42} />
             <Line type="monotone" dataKey="converted" stroke="var(--color-converted)" strokeWidth={2.5} dot={{ r: 3 }} />
           </ComposedChart>
         </ChartContainer>
       </SectionCard>
-      <SectionCard title="Top paths" description="Content sequences that most reliably lead to outcomes.">
+      <SectionCard bare title="Top paths" description="Content sequences that most reliably lead to outcomes.">
         {d.paths.length ? (
           <DataTable
             columns={[

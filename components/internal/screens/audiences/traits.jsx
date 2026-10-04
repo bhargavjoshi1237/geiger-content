@@ -13,7 +13,7 @@ import {
   StatsBar,
   Toolbar,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -67,7 +67,7 @@ function TraitDialog({ open, onOpenChange, onSave, initial, profileLabel }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[85vh] w-[calc(100%-2rem)] overflow-y-auto bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit trait" : "Set trait"}</DialogTitle>
           <DialogDescription>
@@ -104,8 +104,7 @@ function TraitDialog({ open, onOpenChange, onSave, initial, profileLabel }) {
         </div>
         <DialogFooter>
           <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            variant="ghost"
             onClick={() => onOpenChange(false)}
           >
             Cancel
@@ -203,14 +202,14 @@ export function TraitsScreen() {
       key: "key",
       header: "Key",
       render: (r) => (
-        <span className="font-medium text-foreground">{r.key}</span>
+        <span className="block max-w-[16rem] truncate font-medium text-foreground" title={r.key}>{r.key}</span>
       ),
     },
     {
       key: "value",
       header: "Value",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span className="block max-w-[16rem] truncate font-mono text-xs text-text-secondary sm:max-w-md">
           {typeof r.value === "object"
             ? JSON.stringify(r.value)
             : String(r.value ?? "—")}
@@ -221,7 +220,7 @@ export function TraitsScreen() {
       key: "updated",
       header: "Updated",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span className="whitespace-nowrap text-sm text-text-secondary">
           {formatDateTime(r.updatedAt) || "—"}
         </span>
       ),
@@ -275,7 +274,7 @@ export function TraitsScreen() {
         }
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={2} />
 
       <Toolbar>
         <Select
@@ -285,7 +284,7 @@ export function TraitsScreen() {
             setTraits([]);
           }}
         >
-          <SelectTrigger className="w-72">
+          <SelectTrigger className="w-full sm:w-72">
             <SelectValue placeholder="Select a profile" />
           </SelectTrigger>
           <SelectContent>
@@ -350,12 +349,12 @@ export function TraitsScreen() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete trait</DialogTitle>
             <DialogDescription>
               Remove{" "}
-              <span className="font-medium text-foreground">
+              <span className="break-all font-medium text-foreground">
                 {deleteTarget?.key}
               </span>{" "}
               from this profile? Segments matching on it will stop matching.
@@ -366,7 +365,7 @@ export function TraitsScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

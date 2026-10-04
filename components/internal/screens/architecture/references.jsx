@@ -13,7 +13,7 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -59,7 +59,7 @@ function ReferenceDialog({ onClose, fromId, entries, onSave }) {
   };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Add reference</DialogTitle>
           <DialogDescription>
@@ -169,6 +169,13 @@ export function ReferencesScreen() {
         value: String(incoming.length),
         footer: "Reverse links",
       },
+      {
+        label: "Link fields",
+        value: String(
+          new Set([...outgoing, ...incoming].map((r) => r.fieldKey).filter(Boolean)).size,
+        ),
+        footer: "Distinct field keys",
+      },
     ],
     [entries, outgoing, incoming, selected],
   );
@@ -216,11 +223,11 @@ export function ReferencesScreen() {
           render: (r) => {
             const other = entryById[r[otherKey]];
             return (
-              <div className="flex flex-col gap-1">
-                <span className="font-medium text-foreground">
+              <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-xs">
+                <span className="truncate font-medium text-foreground" title={other?.title}>
                   {other?.title || "Deleted entry"}
                 </span>
-                <span className="text-xs text-text-secondary">
+                <span className="truncate text-xs text-text-secondary">
                   {other ? `/${other.slug} · ${other.status}` : r[otherKey]}
                 </span>
               </div>
@@ -245,7 +252,8 @@ export function ReferencesScreen() {
             <Button
               variant="ghost"
               aria-label="Remove reference"
-              className="text-red-400 hover:bg-red-500/10"
+              size="icon-sm"
+              className="shrink-0 text-red-400 hover:bg-red-500/10 hover:text-red-400"
               onClick={() => handleDelete(r, side)}
             >
               <Trash2 className="h-4 w-4" />
@@ -277,9 +285,9 @@ export function ReferencesScreen() {
         title="References"
         description="Directed entry-to-entry links with reverse lookups."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
             <Select value={entryId} onValueChange={pickEntry}>
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-full min-w-0 sm:w-64" aria-label="Entry">
                 <SelectValue placeholder="Select an entry" />
               </SelectTrigger>
               <SelectContent>
@@ -302,7 +310,12 @@ export function ReferencesScreen() {
       />
       <StatsBar stats={stats} />
       {loading || loadingRefs ? (
-        <TableSkeleton columns={[{ key: "entry", header: "Links" }]} />
+        <TableSkeleton
+          columns={[
+            { key: "entry", header: "Entry" },
+            { key: "field", header: "Field" },
+          ]}
+        />
       ) : !selected ? (
         <div className="rounded-xl border border-border bg-surface-subtle">
           <EmptyState
@@ -312,14 +325,16 @@ export function ReferencesScreen() {
           />
         </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-6">
           <SectionCard
+
             title="Outgoing"
             description={`Links from ${selected.title}.`}
           >
             {renderRows(outgoing, "toEntryId", "out")}
           </SectionCard>
           <SectionCard
+
             title="Incoming"
             description={`Entries pointing at ${selected.title}.`}
           >

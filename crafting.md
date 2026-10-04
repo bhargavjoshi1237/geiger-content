@@ -5,7 +5,7 @@ fully-interactive surface that feels native to the Geiger suite. The **events
 area** is the reference build — when in doubt, open these files and copy the
 pattern:
 
-- Shared primitives: `components/internal/shared/screen_kit.jsx`,
+- Shared primitives: `@geiger/ui/screen-kit`,
   `components/internal/shared/screen_wrappers.jsx`
 - List screen: `components/internal/screens/events/all_events.jsx`
 - Overview screen: `components/internal/screens/overview/events_overview.jsx`
@@ -136,7 +136,7 @@ badges use tailwind colours at `/10` bg + `/20` border. **Never hardcode hex.**
 ### 4.2 Reuse before you build
 
 Before writing anything visual, reach for the shared kit
-(`@/components/internal/shared/screen_kit`):
+(`@geiger/ui/screen-kit`; use `@geiger/ui/segmented-tabs` for `SegmentedTabs`):
 
 - **Frame:** `ScreenHeader` (title + description + right-aligned actions),
   `MainScreenWrapper` / `SecondaryScreenWrapper`.
@@ -148,12 +148,17 @@ Before writing anything visual, reach for the shared kit
   (`@/components/internal/screens/overview/filter_dropdown`).
 - **Lists:** `DataTable` (columns: `{ key, header, align?, className?, render }`,
   with `getRowKey` and `onRowClick`), `StatusPill`, `EmptyState`.
+  When a table needs a section title or description, use `SectionCard bare`
+  around the standard table so there is a single frame. Use the same bare
+  section for loading tables; keep form and chart sections framed.
 - **Settings:** `SettingsList` + `SettingRow` (auto-renders a `Switch`, or takes a
   custom `control`).
 - **Forms:** `Field` (label + hint wrapper) around shadcn `Input`/`Select`.
 
-If a primitive is *almost* right, extend the kit rather than forking layout into a
-screen.
+Import suite components directly from `@geiger/ui` and use their default
+appearance. Keep screen layout in surrounding containers; do not override the
+components' borders, backgrounds, typography, or internal spacing. Keep app data
+and navigation logic local.
 
 ### 4.3 Screen anatomy (list view)
 

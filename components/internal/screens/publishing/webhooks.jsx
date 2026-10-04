@@ -27,7 +27,7 @@ import {
   StatusPill,
   Toolbar,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import { Input } from "@geiger/ui/input";
@@ -102,7 +102,7 @@ function WebhookDialog({ open, onOpenChange, initial, onSubmit, title, cta }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
@@ -145,8 +145,9 @@ function WebhookDialog({ open, onOpenChange, initial, onSubmit, title, cta }) {
               ))}
             </div>
           </Field>
-          <Field label="Secret" hint="Stored with the webhook; sent as nothing yet — reserved for HMAC signing.">
+          <Field label="Secret" htmlFor="webhook-secret" hint="Stored with the webhook; sent as nothing yet — reserved for HMAC signing.">
             <Input
+              id="webhook-secret"
               value={draft.secret}
               onChange={(e) => set("secret")(e.target.value)}
               placeholder="Optional signing secret"
@@ -371,9 +372,9 @@ export function WebhooksScreen() {
       key: "name",
       header: "Webhook",
       render: (r) => (
-        <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 max-w-sm flex-col gap-1">
           <span className="font-medium text-foreground">{r.name}</span>
-          <span className="font-mono text-xs text-text-secondary">{r.url || "—"}</span>
+          <span className="whitespace-normal break-all font-mono text-xs text-text-secondary">{r.url || "—"}</span>
         </div>
       ),
     },
@@ -524,7 +525,7 @@ export function WebhooksScreen() {
           />
           <ListPagination {...pager} itemLabel="webhooks" />
 
-          <SectionCard title="Delivery log">
+          <SectionCard bare title="Delivery log">
             <DataTable
               columns={deliveryColumns}
               data={deliveries}
@@ -568,7 +569,7 @@ export function WebhooksScreen() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete webhook</DialogTitle>
             <DialogDescription>
@@ -584,7 +585,7 @@ export function WebhooksScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

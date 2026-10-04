@@ -3,9 +3,30 @@ import assert from "node:assert/strict";
 import { eligibleVariants, publicScope, safeDecisionContext } from "../lib/delivery/core.mjs";
 import { assetContentHash } from "../lib/delivery/asset_hash.mjs";
 import { normalizeVariant } from "../lib/decide-core.js";
+import * as delivery from "../lib/delivery/core.mjs";
 
 const project = "11111111-1111-4111-8111-111111111111";
 const foreign = "22222222-2222-4222-8222-222222222222";
+
+test("individual public pages fetch fresh publication state without caching missing entries", () => {
+  assert.deepEqual(delivery.publicFetchOptions?.({ entryId: project }), { cache: "no-store" });
+  assert.deepEqual(delivery.publicFetchOptions?.({ projectId: project }), {
+    cache: "force-cache", next: { revalidate: 60, tags: ["content-public", `content-project:${project}`] },
+  });
+});
+
+test("workspace public links exist only for saved, public, published entries", () => {
+  const live = { id: project, status: "Published", visibility: "public" };
+  assert.equal(delivery.publicEntryPath?.(live), `/c/${project}`);
+  assert.equal(delivery.publicEntryPath?.(live, "/content"), `/content/c/${project}`);
+  for (const status of ["Draft", "In review", "Scheduled", "Archived"]) {
+    assert.equal(delivery.publicEntryPath?.({ ...live, status }), null);
+  }
+  assert.equal(delivery.publicEntryPath?.({ ...live, visibility: "private" }), null);
+  assert.equal(delivery.publicEntryPath?.({ ...live, metadata: { visibility: "private" } }), null);
+  assert.equal(delivery.publicEntryPath?.({ ...live, deletedAt: "today" }), null);
+  assert.equal(delivery.publicEntryPath?.(null), null);
+});
 
 test("public decisions require a valid project and bounded slot key", () => {
   assert.equal(publicScope({ projectId: project, slotKey: "hero" }), true);

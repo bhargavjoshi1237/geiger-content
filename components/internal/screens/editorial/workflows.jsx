@@ -2,19 +2,20 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Pencil, Plus, Trash2, Workflow } from "lucide-react";
+import { ChevronRight, Pencil, Plus, Trash2, Workflow } from "lucide-react";
+import { LoadingArea } from "@geiger/ui";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
   EmptyState,
   Field,
   ScreenHeader,
   SearchInput,
+  SectionCard,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -64,7 +65,7 @@ function StateDialog({ initial, position, onClose, onSave }) {
   };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit workflow state" : "New workflow state"}</DialogTitle>
           <DialogDescription>
@@ -72,7 +73,7 @@ function StateDialog({ initial, position, onClose, onSave }) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Label" htmlFor="state-label">
               <Input
                 id="state-label"
@@ -90,7 +91,7 @@ function StateDialog({ initial, position, onClose, onSave }) {
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Position">
               <Input
                 type="number"
@@ -104,7 +105,7 @@ function StateDialog({ initial, position, onClose, onSave }) {
                 onValueChange={(v) => set("isTerminal")(v === "yes")}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue/>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="no">No — flow continues</SelectItem>
@@ -164,7 +165,7 @@ export function WorkflowsScreen() {
 
   const stats = useMemo(
     () => [
-      { label: "States", value: String(rows.length) },
+      { label: "States", value: String(rows.length), footer: "In this workflow" },
       {
         label: "Terminal",
         value: String(rows.filter((r) => r.isTerminal).length),
@@ -229,9 +230,9 @@ export function WorkflowsScreen() {
       key: "label",
       header: "State",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.label}</span>
-          <span className="text-xs text-text-secondary">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-md">
+          <span className="truncate font-medium text-foreground">{r.label}</span>
+          <span className="truncate font-mono text-xs text-text-secondary">
             {r.key || "no key"} · position {r.position}
           </span>
         </div>
@@ -293,13 +294,31 @@ export function WorkflowsScreen() {
           </Button>
         }
       />
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
+      {!loading && rows.length > 0 ? (
+        <SectionCard title="Flow" description="The order entries move through, by position.">
+          <ol className="flex flex-wrap items-center gap-2">
+            {rows.map((r, i) => (
+              <li key={r.id} className="flex min-w-0 items-center gap-2">
+                {i > 0 ? (
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-tertiary" aria-hidden />
+                ) : null}
+                <Badge variant={r.isTerminal ? "success" : "neutral"} className="max-w-[12rem]">
+                  <span className="truncate">{r.label}</span>
+                </Badge>
+              </li>
+            ))}
+          </ol>
+        </SectionCard>
+      ) : null}
       <Toolbar>
-        <div />
+        <span className="text-sm text-text-secondary">
+          {filtered.length} of {rows.length} state{rows.length === 1 ? "" : "s"}
+        </span>
         <SearchInput value={search} onChange={setSearch} placeholder="Search states…" />
       </Toolbar>
       {loading ? (
-        <TableSkeleton columns={columns} />
+        <LoadingArea panel size={48} label="Loading workflow states" />
       ) : (
         <DataTable
           columns={columns}
@@ -310,17 +329,27 @@ export function WorkflowsScreen() {
               <EmptyState
                 icon={Workflow}
                 title={rows.length ? "No states match your search" : "No workflow states yet"}
-                description="Draft → In review → Published is the default flow; add gates like Legal review."
+                description={
+                  rows.length
+                    ? "Try a different search term."
+                    : "Draft → In review → Published is the default flow; add gates like Legal review."
+                }
                 action={
-                  <Button
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={() => {
-                      setEditing(null);
-                      setDialogOpen(true);
-                    }}
-                  >
-                    <Plus className="h-4 w-4" /> New state
-                  </Button>
+                  rows.length ? (
+                    <Button variant="outline" onClick={() => setSearch("")}>
+                      Clear search
+                    </Button>
+                  ) : (
+                    <Button
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      onClick={() => {
+                        setEditing(null);
+                        setDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" /> New state
+                    </Button>
+                  )
                 }
               />
             </div>

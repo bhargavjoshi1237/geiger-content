@@ -7,7 +7,7 @@ import {
   SidebarMenuBadge,
   useSidebar,
 } from "@geiger/ui/sidebar";
-import { cn } from "@/lib/utils";
+import { cn } from "@geiger/ui/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import {

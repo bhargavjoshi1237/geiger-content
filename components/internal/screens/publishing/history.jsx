@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { FileClock, Undo2 } from "lucide-react";
+import { FileClock, Undo2, X } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -17,17 +17,17 @@ import {
   SearchInput,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Badge } from "@geiger/ui/badge";
+import { Button } from "@geiger/ui/button";
 import { ActionMenu } from "@geiger/ui/action-menu";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
-import { formatDateTime } from "./constants";
+import { formatDate, formatDateTime } from "./constants";
 import { listContent } from "@/lib/supabase/content";
 import { listRecentVersions, rollbackTo } from "@/lib/supabase/versions";
 import { useProject } from "@/context/project-context";
 
-// The cross-entry version log: every publish snapshot, newest first, with
-// who-published attribution and one-click restore-as-draft.
+// Cross-entry version log: every publish snapshot, newest first, restorable as a draft.
 export function PublishingHistoryScreen() {
   const [versions, setVersions] = useState([]);
   const [entries, setEntries] = useState({});
@@ -87,8 +87,8 @@ export function PublishingHistoryScreen() {
       { label: "Entries", value: String(entryIds.size), footer: "With publish history" },
       {
         label: "Latest publish",
-        value: latest ? (entries[latest.entryId]?.title || `v${latest.version}`).slice(0, 18) : "—",
-        footer: latest ? formatDateTime(latest.publishedAt || latest.createdAt) : "Nothing published yet",
+        value: latest ? formatDate(latest.publishedAt || latest.createdAt) || "—" : "—",
+        footer: latest ? `${entries[latest.entryId]?.title || "Deleted entry"} · v${latest.version}` : "Nothing published yet",
       },
     ];
   }, [versions, entries]);
@@ -108,7 +108,7 @@ export function PublishingHistoryScreen() {
       key: "when",
       header: "When",
       render: (v) => (
-        <span className="text-sm text-text-secondary">
+        <span className="whitespace-nowrap text-sm text-text-secondary">
           {formatDateTime(v.publishedAt || v.createdAt) || "—"}
         </span>
       ),
@@ -117,11 +117,11 @@ export function PublishingHistoryScreen() {
       key: "entry",
       header: "Entry",
       render: (v) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="max-w-sm whitespace-normal break-words font-medium text-foreground">
             {entries[v.entryId]?.title || "Deleted entry"}
           </span>
-          <span className="text-xs text-text-secondary">
+          <span className="truncate font-mono text-xs text-text-secondary">
             {entries[v.entryId] ? `/${entries[v.entryId].slug}` : v.entryId}
           </span>
         </div>
@@ -166,10 +166,10 @@ export function PublishingHistoryScreen() {
         description="Every publish snapshot across every entry — when it went live and what it contained. Restore any of them as a draft."
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <FilterDropdown
             value={scope}
             onValueChange={setScope}
@@ -201,6 +201,19 @@ export function PublishingHistoryScreen() {
                     versions.length
                       ? "Try clearing the search or the entry filter."
                       : "Publish an entry and its snapshot starts the log here."
+                  }
+                  action={
+                    versions.length ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSearch("");
+                          setScope("all");
+                        }}
+                      >
+                        <X className="h-4 w-4" /> Clear filters
+                      </Button>
+                    ) : undefined
                   }
                 />
               </div>

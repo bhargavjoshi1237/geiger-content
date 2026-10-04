@@ -7,29 +7,35 @@ import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers"
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
-  EmptyState,
   ScreenHeader,
   SearchInput,
   SectionCard,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { Button } from "@geiger/ui/button";
 import { listVariants } from "@/lib/supabase/variants";
 import { listTopicStages } from "@/lib/supabase/topics";
 import { useProject } from "@/context/project-context";
+import {
+  ClauseChips,
+  EmptyPanel,
+  HowItWorks,
+  StageMix,
+  VariantCell,
+  VariantStatus,
+  clausesOf,
+} from "./personalization_kit";
 
 const BEHAVIOR_FIELDS = new Set(["stage", "topic", "visits", "last_seen", "converted"]);
 
-function clausesOf(rules) {
-  if (Array.isArray(rules)) return rules;
-  if (rules && typeof rules === "object" && Array.isArray(rules.all)) return rules.all;
-  if (rules && typeof rules === "object") return Object.entries(rules).map(([field, value]) => ({ field, op: "equals", value }));
-  return [];
-}
+const STEPS = [
+  { title: "Behavior is observed", body: "Topic stages, visit depth and conversions are recorded as visitors consume content." },
+  { title: "Clauses match behavior", body: "Variants with stage, topic, visits, last_seen or converted clauses match on what visitors do." },
+  { title: "Same tie-breaks", body: "Priority and weight decide among matches, exactly like segment and context targeting." },
+];
 
-// Behavior Targeting: variants keyed off observed behavior (topic stage,
-// visit depth, past conversion) plus the live topic-stage distribution that
-// feeds the `stage` clause.
+// Behavior Targeting: variants keyed off observed behavior, plus the live topic-stage mix feeding `stage`.
 export function BehaviorTargetScreen() {
   const [variants, setVariants] = useState([]);
   const [stages, setStages] = useState([]);
@@ -48,18 +54,17 @@ export function BehaviorTargetScreen() {
     return () => { alive = false; };
   }, [projectId]);
 
-  const behavioral = useMemo(
+  const mappings = useMemo(
     () => variants
       .map((v) => ({ variant: v, clauses: clausesOf(v.rules).filter((c) => BEHAVIOR_FIELDS.has(String(c.field).split(".")[0])) }))
-      .filter((r) => r.clauses.length > 0 && (!search || r.clauses.some((c) => `${c.field} ${c.value}`.toLowerCase().includes(search.toLowerCase())))),
-    [variants, search],
+      .filter((r) => r.clauses.length > 0),
+    [variants],
   );
 
-  const stageMix = useMemo(() => {
-    const counts = {};
-    for (const s of stages) counts[s.stage] = (counts[s.stage] || 0) + 1;
-    return Object.entries(counts).map(([stage, count]) => ({ stage, count }));
-  }, [stages]);
+  const behavioral = useMemo(
+    () => mappings.filter((r) => !search || r.clauses.some((c) => `${c.field} ${c.value}`.toLowerCase().includes(search.toLowerCase()))),
+    [mappings, search],
+  );
 
   const stats = useMemo(() => [
     { label: "Behavior-targeted", value: String(behavioral.length), footer: "Variants with behavior clauses" },
@@ -70,15 +75,15 @@ export function BehaviorTargetScreen() {
   const columns = [
     {
       key: "behavior", header: "Behavior",
-      render: (r) => (
-        <span className="font-medium text-foreground">
-          {r.clauses.map((c) => `${c.field} ${c.op || "equals"} "${c.value}"`).join(" · ")}
-        </span>
-      ),
+      render: (r) => <ClauseChips clauses={r.clauses} />,
     },
     {
       key: "variant", header: "Variant",
-      render: (r) => <span className="text-sm text-text-secondary">priority {r.variant.priority} · weight {r.variant.weight} · {r.variant.status}</span>,
+      render: (r) => <VariantCell variant={r.variant} />,
+    },
+    {
+      key: "status", header: "Status",
+      render: (r) => <VariantStatus status={r.variant.status} />,
     },
   ];
 
@@ -88,20 +93,7 @@ export function BehaviorTargetScreen() {
         title="Behavior Targeting"
         description="Variants served by what visitors do — topic stage, visit depth, past conversion — not who they are."
       />
-      <StatsBar stats={stats} />
-      <SectionCard title="Live stage mix" description="Topic-stage rows observed in this project. Behavior stages are nascent — treat small counts as directional, not precise.">
-        {stageMix.length === 0 ? (
-          <p className="text-sm text-text-secondary">No staged profiles yet. Stages are written as visitors consume topic-tagged content.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {stageMix.map((m) => (
-              <span key={m.stage} className="rounded-full border border-border bg-surface-card px-3 py-1 text-xs text-foreground">
-                {m.stage}: {m.count}
-              </span>
-            ))}
-          </div>
-        )}
-      </SectionCard>
+      <StatsBar stats={stats} columns={3} />
       <Toolbar>
         <span className="text-sm text-text-secondary">{behavioral.length} mappings</span>
         <SearchInput value={search} onChange={setSearch} placeholder="Search behaviors…" />
@@ -113,9 +105,27 @@ export function BehaviorTargetScreen() {
           columns={columns}
           data={behavioral}
           getRowKey={(r) => r.variant.id}
-          empty={<EmptyState icon={Activity} title="No behavior targeting yet" description="Add a clause with key stage, topic, visits or converted on any variant." />}
+          empty={
+            <EmptyPanel
+              icon={Activity}
+              title={mappings.length ? "No behaviors match your search" : "No behavior targeting yet"}
+              description={mappings.length ? "Try a different stage, topic or value." : "Add a clause with key stage, topic, visits or converted on any variant."}
+              action={mappings.length ? <Button variant="ghost" onClick={() => setSearch("")}>Clear search</Button> : null}
+            />
+          }
         />
       )}
+      <SectionCard
+        title="Live stage mix"
+        description="Topic-stage rows observed in this project. Stages are nascent — treat small counts as directional."
+      >
+        {!loading && stages.length === 0 ? (
+          <p className="text-sm text-text-secondary">No staged profiles yet. Stages are written as visitors consume topic-tagged content.</p>
+        ) : (
+          <StageMix stages={stages} />
+        )}
+      </SectionCard>
+      <HowItWorks steps={STEPS} />
     </MainScreenWrapper>
   );
 }

@@ -329,7 +329,7 @@ Non-negotiable, from `MODULE_CONVENTIONS.md` and `crafting.md`:
 5. **States** — unnamed `LogoLoading` for section/page loads, `Loader2` on loading buttons, `EmptyState` when empty, a
    distinct filtered-empty message. Optimistic mutations with `crypto.randomUUID()`
    ids, persisted, rolled back and toasted on failure.
-6. **UI** — `@geiger/ui` only, via the `screen_kit` re-export. Semantic tokens
+6. **UI** — direct `@geiger/ui` imports, including `@geiger/ui/screen-kit`. Semantic tokens
    only, never hardcoded hex. Lucide icons.
 7. **Permissions** — add the `view.*` key and check it where the nav/control
    renders.

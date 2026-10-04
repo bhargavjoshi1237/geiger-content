@@ -11,6 +11,7 @@ import { useWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
 import { CONTENT_STATUS_MAP, formatDate } from "./constants";
 import { NAV_GROUPS, SECTIONS } from "./content_sections";
 import { updateContent } from "@/lib/supabase/content";
+import { publicEntryPath } from "@/lib/delivery/core.mjs";
 
 export function ContentDetailScreen({ content, backLabel, onBack, onUpdate }) {
   const { section: active, setSection: setActive } = useWorkspaceUrl();
@@ -22,6 +23,9 @@ export function ContentDetailScreen({ content, backLabel, onBack, onUpdate }) {
   }
 
   if (!content) return null;
+  const livePath = publicEntryPath(content, process.env.NEXT_PUBLIC_BASE_PATH || "");
+  const liveHint = livePath ? "View live page" : content.visibility === "private"
+    ? "Private content has no public page" : "Publish and save this entry to view its live page";
 
   const patch = (partial) => setForm((f) => ({ ...f, ...partial }));
 
@@ -43,9 +47,9 @@ export function ContentDetailScreen({ content, backLabel, onBack, onUpdate }) {
   };
 
   const viewLive = () => {
-    if (typeof window !== "undefined") {
+    if (livePath && typeof window !== "undefined") {
       window.open(
-        `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/c/${form.id}`,
+        livePath,
         "_blank",
         "noopener,noreferrer",
       );
@@ -68,10 +72,12 @@ export function ContentDetailScreen({ content, backLabel, onBack, onUpdate }) {
         <>
           <Button
             variant="outline"
+            size="icon"
             className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={viewLive}
-            title="View live page"
-            aria-label="View live page"
+            disabled={!livePath}
+            title={liveHint}
+            aria-label={liveHint}
           >
             <ExternalLink className="h-4 w-4" />
           </Button>

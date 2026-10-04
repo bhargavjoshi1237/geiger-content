@@ -15,7 +15,7 @@ import {
   Field,
   SearchInput,
   SectionCard,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
@@ -52,7 +52,7 @@ function OverviewSection({ slot, onPatch }) {
               onValueChange={(v) => patch({ status: v })}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue/>
               </SelectTrigger>
               <SelectContent>
                 {Object.keys(SLOT_STATUS_MAP).map((s) => (
@@ -181,7 +181,7 @@ function DeliverySection({ slot, onPatch }) {
           </Select>
         </Field>
         {fallback ? (
-          <p className="text-xs text-text-secondary">
+          <p className="break-words text-xs text-text-secondary">
             Current fallback: {fallback.title} (/{fallback.slug})
           </p>
         ) : null}

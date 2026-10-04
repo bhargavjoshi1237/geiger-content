@@ -19,7 +19,7 @@ import {
   StatusPill,
   Toolbar,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -70,7 +70,7 @@ function InviteDialog({ open, onOpenChange, roles, onInvite }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Invite member</DialogTitle>
           <DialogDescription>
@@ -79,17 +79,18 @@ function InviteDialog({ open, onOpenChange, roles, onInvite }) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <Field label="User id">
+          <Field label="User id" htmlFor="invite-user-id">
             <Input
+              id="invite-user-id"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               placeholder="UUID of an existing user"
               autoFocus
             />
           </Field>
-          <Field label="Role">
+          <Field label="Role" htmlFor="invite-role">
             <Select value={roleId} onValueChange={setRoleId}>
-              <SelectTrigger>
+              <SelectTrigger id="invite-role">
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
@@ -103,17 +104,10 @@ function InviteDialog({ open, onOpenChange, roles, onInvite }) {
           </Field>
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={submit}
-          >
+          <Button onClick={submit}>
             Send invite
           </Button>
         </DialogFooter>
@@ -244,12 +238,12 @@ export function TeamMembersScreen() {
       key: "member",
       header: "Member",
       render: (g) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="whitespace-nowrap font-mono text-sm font-medium text-foreground">
             {shortId(g.userId)}
           </span>
-          <span className="text-xs text-text-secondary">
-            Granted{ g.createdAt ? ` · ${formatDate(g.createdAt)}` : ""}
+          <span className="whitespace-nowrap text-xs text-text-secondary">
+            Granted{g.createdAt ? ` · ${formatDate(g.createdAt)}` : ""}
           </span>
         </div>
       ),
@@ -262,7 +256,7 @@ export function TeamMembersScreen() {
           value={g.roleId || ""}
           onValueChange={(roleId) => handleRoleChange(g, roleId)}
         >
-          <SelectTrigger className="w-44">
+          <SelectTrigger className="w-44" aria-label={`Role for ${shortId(g.userId)}`}>
             <SelectValue placeholder="Select role" />
           </SelectTrigger>
           <SelectContent>
@@ -279,7 +273,7 @@ export function TeamMembersScreen() {
       key: "scope",
       header: "Scope",
       render: (g) => (
-        <span className="text-sm text-text-secondary">
+        <span className="whitespace-nowrap text-sm text-text-secondary">
           {g.scope && Object.keys(g.scope).length > 0
             ? "Narrowed"
             : "Whole project"}
@@ -320,10 +314,7 @@ export function TeamMembersScreen() {
         title="Team & Members"
         description="Who holds which role in this project — invite members, reassign roles, and revoke access."
         actions={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setInviteOpen(true)}
-          >
+          <Button onClick={() => setInviteOpen(true)}>
             <Plus className="h-4 w-4" /> Invite member
           </Button>
         }
@@ -355,16 +346,19 @@ export function TeamMembersScreen() {
                   title={grants.length ? "No members match your filters" : "No members yet"}
                   description={
                     grants.length
-                      ? "Try clearing the search, or invite someone new."
+                      ? "Try a different search, or invite someone new."
                       : "Invite your first member to start sharing this project."
                   }
                   action={
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                      onClick={() => setInviteOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" /> Invite member
-                    </Button>
+                    grants.length ? (
+                      <Button variant="outline" onClick={() => setSearch("")}>
+                        Clear search
+                      </Button>
+                    ) : (
+                      <Button onClick={() => setInviteOpen(true)}>
+                        <Plus className="h-4 w-4" /> Invite member
+                      </Button>
+                    )
                   }
                 />
               </div>
@@ -385,7 +379,7 @@ export function TeamMembersScreen() {
         open={!!revokeTarget}
         onOpenChange={(open) => !open && setRevokeTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Revoke grant</DialogTitle>
             <DialogDescription>
@@ -406,7 +400,7 @@ export function TeamMembersScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleRevoke(revokeTarget)}
             >
               <Trash2 className="h-4 w-4" /> Revoke

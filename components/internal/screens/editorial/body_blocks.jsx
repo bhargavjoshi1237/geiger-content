@@ -28,14 +28,14 @@ export function BodyBlocks({ value, className }) {
         block.type === "heading" ? (
           <h2
             key={i}
-            className="text-xl font-semibold leading-snug text-foreground"
+            className="break-words text-xl font-semibold leading-snug text-foreground"
           >
             {block.text}
           </h2>
         ) : (
           <p
             key={i}
-            className="whitespace-pre-wrap text-base leading-relaxed text-foreground"
+            className="whitespace-pre-wrap break-words text-base leading-relaxed text-foreground"
           >
             {block.text}
           </p>
@@ -71,13 +71,13 @@ export function BodyEditor({ doc, onChange }) {
   return (
     <div className="grid gap-3">
       {blocks.map((block, i) => (
-        <div key={i} className="flex items-start gap-2">
+        <div key={i} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2 sm:grid-cols-[8rem_minmax(0,1fr)_auto]">
           <Select
             value={block.type === "heading" ? "heading" : "paragraph"}
             onValueChange={(v) => updateBlock(i, { type: v })}
           >
             <SelectTrigger
-              className="w-32 shrink-0 bg-surface-card"
+              className="w-full min-w-0 bg-surface-card"
               aria-label={`Block ${i + 1} type`}
             >
               <SelectValue />
@@ -87,7 +87,7 @@ export function BodyEditor({ doc, onChange }) {
               <SelectItem value="heading">Heading</SelectItem>
             </SelectContent>
           </Select>
-          <div className="min-w-0 flex-1">
+          <div className="col-span-2 row-start-2 min-w-0 sm:col-span-1 sm:row-start-auto">
             {block.type === "heading" ? (
               <Input
                 value={block.text}
@@ -111,13 +111,13 @@ export function BodyEditor({ doc, onChange }) {
             size="icon"
             onClick={() => removeBlock(i)}
             aria-label={`Remove block ${i + 1}`}
-            className="shrink-0 text-text-secondary hover:text-foreground"
+            className="col-start-2 row-start-1 shrink-0 text-text-secondary hover:text-foreground sm:col-start-3"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       ))}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
           variant="outline"

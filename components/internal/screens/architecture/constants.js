@@ -36,9 +36,9 @@ export const SOURCE_STATUS_MAP = {
   Disconnected: {
     label: "Disconnected",
     variant: "neutral",
-    dotClass: "bg-[#737373]",
+    dotClass: "bg-text-tertiary",
   },
-  Error: { label: "Error", variant: "destructive", dotClass: "bg-red-400" },
+  Error: { label: "Error", variant: "danger", dotClass: "bg-red-400" },
 };
 
 export const SOURCE_STATUSES = Object.keys(SOURCE_STATUS_MAP);

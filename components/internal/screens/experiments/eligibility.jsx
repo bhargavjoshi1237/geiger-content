@@ -13,9 +13,10 @@ import {
   SectionCard,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { listExperiments } from "@/lib/supabase/experiments";
 import { useProject } from "@/context/project-context";
+import { ExperimentCell } from "./parts";
 
 // Eligibility Rules: who may enter an experiment. Rules live in each
 // experiment's metadata bag under `eligibility` (free-form clauses, same
@@ -58,15 +59,12 @@ export function EligibilityScreen() {
     {
       key: "exp", header: "Experiment",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
-          <span className="text-xs text-text-secondary">{r.status}</span>
-        </div>
+        <ExperimentCell name={r.name} meta={r.status} />
       ),
     },
     {
       key: "eligibility", header: "Eligibility",
-      render: (r) => <span className="text-sm text-text-secondary">{describe(r.eligibility)}</span>,
+      render: (r) => <span className="block max-w-[20rem] whitespace-normal break-words text-sm text-text-secondary sm:max-w-lg">{describe(r.eligibility)}</span>,
     },
   ];
 

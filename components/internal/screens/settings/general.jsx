@@ -12,7 +12,7 @@ import {
   SectionCard,
   SettingRow,
   SettingsList,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import {
   Select,
@@ -117,12 +117,12 @@ export function GeneralScreen() {
               description="Language new entries are authored in."
               icon={Languages}
               control={
-                <Field label="Default locale">
+                <Field label="Default locale" htmlFor="general-default-locale">
                   <Select
                     value={defaultLocale}
                     onValueChange={setDefaultLocale}
                   >
-                    <SelectTrigger className="w-56">
+                    <SelectTrigger id="general-default-locale" className="w-full sm:w-56">
                       <SelectValue placeholder="Select locale" />
                     </SelectTrigger>
                     <SelectContent>
@@ -141,9 +141,9 @@ export function GeneralScreen() {
               description="Used for scheduled publishing times."
               icon={Globe}
               control={
-                <Field label="Timezone">
+                <Field label="Timezone" htmlFor="general-timezone">
                   <Select value={timezone} onValueChange={setTimezone}>
-                    <SelectTrigger className="w-56">
+                    <SelectTrigger id="general-timezone" className="w-full sm:w-56">
                       <SelectValue placeholder="Select timezone" />
                     </SelectTrigger>
                     <SelectContent>

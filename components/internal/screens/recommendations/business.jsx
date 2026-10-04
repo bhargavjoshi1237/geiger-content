@@ -15,7 +15,7 @@ import {
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { ActionMenu } from "@geiger/ui/action-menu";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -42,15 +42,9 @@ import {
 } from "@/lib/supabase/variants";
 import { listContent } from "@/lib/supabase/content";
 import { useProject } from "@/context/project-context";
+import { EMPTY_PANEL_CLASS, RULE_STATUS_MAP, RULE_TYPE_MAP } from "./constants";
 
-const RULE_STATUS_MAP = {
-  Active: { label: "Active", variant: "success", dotClass: "bg-emerald-400" },
-  Paused: { label: "Paused", variant: "neutral", dotClass: "bg-[#737373]" },
-};
-
-// Business Rules: the commercial layer on ranking — same ranking_rules
-// table as Boosts & Exclusions, framed for merchandising (sponsor boosts,
-// compliance exclusions, margin weights).
+// Business Rules: the commercial layer on ranking (same ranking_rules table as Boosts & Exclusions), framed for merchandising.
 export function BusinessScreen() {
   const [rows, setRows] = useState([]);
   const [entries, setEntries] = useState([]);
@@ -141,10 +135,19 @@ export function BusinessScreen() {
     {
       key: "entry", header: "Entry",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{entryTitle(r.entryId)}</span>
-          <span className="text-xs text-text-secondary">{r.ruleType === "boost" ? `boost × ${r.weight}` : "excluded"} · {r.reason || "no reason recorded"}</span>
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-lg">
+          <span className="line-clamp-2 font-medium text-foreground">{entryTitle(r.entryId)}</span>
+          <span className="line-clamp-2 text-xs text-text-secondary">{r.reason || "No reason recorded"}</span>
         </div>
+      ),
+    },
+    {
+      key: "type", header: "Rule",
+      render: (r) => (
+        <span className="inline-flex items-center gap-2">
+          <StatusPill status={r.ruleType} map={RULE_TYPE_MAP} />
+          {r.ruleType === "boost" ? <span className="text-xs tabular-nums text-text-secondary">× {r.weight}</span> : null}
+        </span>
       ),
     },
     {
@@ -177,9 +180,9 @@ export function BusinessScreen() {
           </Button>
         }
       />
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
       <Toolbar>
-        <span className="text-sm text-text-secondary">{filtered.length} rules</span>
+        <span className="text-sm text-text-secondary">{filtered.length} {filtered.length === 1 ? "rule" : "rules"}</span>
         <SearchInput value={search} onChange={setSearch} placeholder="Search entries, reasons…" />
       </Toolbar>
       {loading ? (
@@ -195,16 +198,23 @@ export function BusinessScreen() {
               title={rows.length ? "No rules match your search" : "No business rules yet"}
               description={rows.length ? "Try clearing the search." : "Pin sponsor content or block regulated entries — with the reason attached."}
               action={
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-4 w-4" /> Create rule
-                </Button>
+                rows.length ? (
+                  <Button variant="outline" className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground" onClick={() => setSearch("")}>
+                    Clear search
+                  </Button>
+                ) : (
+                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setCreateOpen(true)}>
+                    <Plus className="h-4 w-4" /> Create rule
+                  </Button>
+                )
               }
+              className={EMPTY_PANEL_CLASS}
             />
           }
         />
       )}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md bg-background">
+        <DialogContent className="max-h-[85vh] overflow-y-auto bg-background sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create business rule</DialogTitle>
             <DialogDescription>The reason is required — every commercial override must explain itself.</DialogDescription>
@@ -212,16 +222,16 @@ export function BusinessScreen() {
           <div className="grid gap-4">
             <Field label="Entry">
               <Select value={entryId} onValueChange={setEntryId}>
-                <SelectTrigger><SelectValue placeholder="Select an entry" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Select an entry" /></SelectTrigger>
                 <SelectContent>
                   {(entries || []).map((e) => <SelectItem key={e.id} value={e.id}>{e.title || e.slug}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Rule type">
                 <Select value={ruleType} onValueChange={setRuleType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue/></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="boost">Boost</SelectItem>
                     <SelectItem value="exclude">Exclude</SelectItem>

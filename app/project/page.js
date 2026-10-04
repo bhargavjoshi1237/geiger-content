@@ -7,7 +7,7 @@ import {
   useProject,
   pickDefaultProjectId,
 } from "@/context/project-context";
-import { LoadingArea } from "@/components/internal/workspace/workspace_states";
+import { LoadingArea } from "@geiger/ui/screen-kit";
 
 // Entry resolver for the project-scoped workspace. Opens the last-used (or
 // first) project. Unlike geiger-events, Content inherits the parent app's
@@ -23,7 +23,7 @@ function ProjectResolver() {
     router.replace(`/project/${id}`);
   }, [loading, projects, router]);
 
-  return <LoadingArea />;
+  return <LoadingArea/>;
 }
 
 export default function ProjectIndexPage() {
@@ -35,7 +35,7 @@ export default function ProjectIndexPage() {
     >
       <ProjectProvider>
         <div className="h-[100dvh] w-full bg-background text-foreground">
-          <ProjectResolver />
+          <ProjectResolver/>
         </div>
       </ProjectProvider>
     </Suspense>

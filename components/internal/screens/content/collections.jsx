@@ -25,7 +25,7 @@ import {
   StatusPill,
   Toolbar,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
@@ -86,7 +86,7 @@ function CreateCollectionDialog({ open, onOpenChange, onCreate }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 sm:max-w-xl bg-background">
         <DialogHeader>
           <DialogTitle>Create collection</DialogTitle>
           <DialogDescription>
@@ -277,9 +277,9 @@ export function CollectionsScreen() {
       key: "name",
       header: "Collection",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
-          <span className="text-xs text-text-secondary">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-md">
+          <span className="truncate font-medium text-foreground" title={r.name}>{r.name}</span>
+          <span className="truncate text-xs text-text-secondary">
             /{r.slug || "no-slug"} · {r.itemCount ?? 0}{" "}
             {(r.itemCount ?? 0) === 1 ? "entry" : "entries"}
             {r.updatedAt ? ` · ${formatDate(r.updatedAt)}` : ""}
@@ -425,7 +425,7 @@ export function CollectionsScreen() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete collection</DialogTitle>
             <DialogDescription>
@@ -441,7 +441,7 @@ export function CollectionsScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

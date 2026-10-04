@@ -8,14 +8,17 @@ import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
   EmptyState,
+  Field,
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { Badge } from "@geiger/ui/badge";
 import { Input } from "@geiger/ui/input";
 import { listContent } from "@/lib/supabase/content";
 import { listTopicStages } from "@/lib/supabase/topics";
 import { useProject } from "@/context/project-context";
+import { EMPTY_PANEL_CLASS } from "./constants";
 
 // Collaborative Ranking: "profiles like this one also engaged with…".
 // True collaborative filtering needs dense cross-profile behavior (nascent),
@@ -67,31 +70,41 @@ export function CollabRankScreen() {
     {
       key: "entry", header: "Suggested",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.entry.title || r.entry.slug}</span>
-          <span className="text-xs text-text-secondary">via topic “{r.topic}” · {r.peers} peer(s)</span>
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-lg">
+          <span className="line-clamp-2 font-medium text-foreground">{r.entry.title || r.entry.slug}</span>
+          <span className="text-xs text-text-secondary">{r.entry.type} · {r.entry.status}</span>
         </div>
       ),
+    },
+    {
+      key: "topic", header: "Via topic",
+      render: (r) => <Badge variant="outline" className="max-w-[12rem]"><span className="truncate">{r.topic}</span></Badge>,
+    },
+    {
+      key: "peers", header: "Peers", align: "right",
+      render: (r) => <span className="text-sm tabular-nums text-text-secondary">{r.peers}</span>,
     },
   ];
 
   return (
     <MainScreenWrapper>
       <ScreenHeader title="Collaborative Ranking" description="What similar profiles engage with — an estimate until behavior data densifies." />
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
       <SectionCard title="Profile" description="Peer overlap is computed from stored topic stages only. With sparse data, treat suggestions as directional.">
-        <Input value={profileId} onChange={(e) => setProfileId(e.target.value)} placeholder="Enter a profile id…" className="max-w-sm" />
+        <Field label="Profile id" htmlFor="collab-profile" className="w-full sm:max-w-sm">
+          <Input id="collab-profile" value={profileId} onChange={(e) => setProfileId(e.target.value)} placeholder="Enter a profile id…" />
+        </Field>
       </SectionCard>
       {loading ? (
         <TableSkeleton columns={columns} />
       ) : !profileId ? (
-        <EmptyState icon={UsersRound} title="Pick a profile" description="Enter a profile id above to find its peers." />
+        <EmptyState icon={UsersRound} title="Pick a profile" description="Enter a profile id above to find its peers." className={EMPTY_PANEL_CLASS} />
       ) : (
         <DataTable
           columns={columns}
           data={ranked}
           getRowKey={(r) => r.entry.id}
-          empty={<EmptyState icon={UsersRound} title="No peer suggestions" description="No overlapping profiles with high-stage topics were found." />}
+          empty={<EmptyState icon={UsersRound} title="No peer suggestions" description="No overlapping profiles with high-stage topics were found." className={EMPTY_PANEL_CLASS} />}
         />
       )}
     </MainScreenWrapper>

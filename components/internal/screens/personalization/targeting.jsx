@@ -8,14 +8,13 @@ import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers"
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
-  EmptyState,
   Field,
   ScreenHeader,
   SearchInput,
   SectionCard,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -28,6 +27,7 @@ import {
 import { listVariants, updateVariant } from "@/lib/supabase/variants";
 import { listSlots } from "@/lib/supabase/slots";
 import { useProject } from "@/context/project-context";
+import { ClauseChips, EmptyPanel } from "./personalization_kit";
 
 const OPS = ["equals", "not_equals", "contains", "in", "gt", "lt"];
 const FIELD_HINTS = ["segment", "locale", "device", "country", "profile.tier"];
@@ -112,11 +112,9 @@ export function TargetingScreen() {
     {
       key: "variant", header: "Variant",
       render: (v) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{slotName(v.slotId)}</span>
-          <span className="text-xs text-text-secondary">
-            {toRows(v.rules).length ? toRows(v.rules).map((r) => `${r.field} ${r.op} "${r.value}"`).join(" · ") : "Default (no rules)"}
-          </span>
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-sm">
+          <span className="truncate font-medium text-foreground" title={slotName(v.slotId)}>{slotName(v.slotId)}</span>
+          <ClauseChips clauses={toRows(v.rules)} />
         </div>
       ),
     },
@@ -132,7 +130,7 @@ export function TargetingScreen() {
         title="Targeting Rules"
         description="Key / operator / value clauses on each variant. All clauses must match (AND) for the variant to win."
       />
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
       <Toolbar>
         <span className="text-sm text-text-secondary">{filtered.length} variants</span>
         <SearchInput value={search} onChange={setSearch} placeholder="Search by slot…" />
@@ -140,15 +138,17 @@ export function TargetingScreen() {
       {loading ? (
         <TableSkeleton columns={columns} />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
           <DataTable
+
             columns={columns}
             data={filtered}
             getRowKey={(v) => v.id}
             onRowClick={(v) => select(v)}
-            empty={<EmptyState icon={SlidersHorizontal} title="No variants yet" description="Create variants first, then target them here." />}
+            empty={<EmptyPanel icon={SlidersHorizontal} title={variants.length ? "No variants match your search" : "No variants yet"} description={variants.length ? "Try a different slot name." : "Create variants first, then target them here."} />}
           />
           <SectionCard
+
             title="Rule editor"
             description={selected ? `Editing rules for ${slotName(selected.slotId)}` : "Select a variant to edit its rules."}
             action={selected ? <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" disabled={saving} onClick={save}>{saving ? "Saving…" : "Save rules"}</Button> : null}
@@ -158,20 +158,20 @@ export function TargetingScreen() {
             ) : (
               <div className="grid gap-3">
                 {rows.map((row, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
-                    <Field label={i === 0 ? "Key" : ""}>
-                      <Input list="targeting-fields" value={row.field} onChange={(e) => setRow(i, { field: e.target.value })} placeholder="segment" />
+                  <div key={i} className="grid min-w-0 gap-3 rounded-lg border border-border bg-surface-card p-3 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+                    <Field label="Key" htmlFor={`targeting-key-${i}`} className="min-w-0">
+                      <Input id={`targeting-key-${i}`} list="targeting-fields" value={row.field} onChange={(e) => setRow(i, { field: e.target.value })} placeholder="segment" />
                     </Field>
-                    <Field label={i === 0 ? "Operator" : ""}>
+                    <Field label="Operator" htmlFor={`targeting-operator-${i}`} className="min-w-0">
                       <Select value={row.op} onValueChange={(v) => setRow(i, { op: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger id={`targeting-operator-${i}`}><SelectValue/></SelectTrigger>
                         <SelectContent>{OPS.map((op) => <SelectItem key={op} value={op}>{op}</SelectItem>)}</SelectContent>
                       </Select>
                     </Field>
-                    <Field label={i === 0 ? "Value" : ""}>
-                      <Input value={row.value} onChange={(e) => setRow(i, { value: e.target.value })} placeholder="value" />
+                    <Field label="Value" htmlFor={`targeting-value-${i}`} className="min-w-0">
+                      <Input id={`targeting-value-${i}`} value={row.value} onChange={(e) => setRow(i, { value: e.target.value })} placeholder="value" />
                     </Field>
-                    <Button variant="ghost" size="icon" aria-label="Remove clause" onClick={() => removeRow(i)}>
+                    <Button variant="ghost" size="icon" className="self-end justify-self-end" aria-label={`Remove clause ${i + 1}`} onClick={() => removeRow(i)}>
                       <Trash2 className="h-4 w-4 text-red-400" />
                     </Button>
                   </div>

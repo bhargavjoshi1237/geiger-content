@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, Cloud, Copy, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { Check, Cloud, Copy, Pencil, Plus, Star, Trash2, X } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -18,7 +18,7 @@ import {
   StatsBar,
   Toolbar,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import { Input } from "@geiger/ui/input";
@@ -61,7 +61,7 @@ function CreateEnvironmentDialog({ open, onOpenChange, onCreate }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create environment</DialogTitle>
           <DialogDescription>
@@ -85,8 +85,10 @@ function CreateEnvironmentDialog({ open, onOpenChange, onCreate }) {
               autoFocus
             />
           </Field>
-          <Field label="Key" hint="Derived from the name unless you override it.">
+          <Field label="Key" htmlFor="env-key" hint="Derived from the name unless you override it.">
             <Input
+              id="env-key"
+              className="font-mono"
               value={draft.key || envKeyify(draft.name)}
               onChange={(e) => set("key")(e.target.value)}
               placeholder="production"
@@ -94,19 +96,10 @@ function CreateEnvironmentDialog({ open, onOpenChange, onCreate }) {
           </Field>
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={submit}
-          >
-            Create environment
-          </Button>
+          <Button onClick={submit}>Create environment</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -243,8 +236,8 @@ export function EnvironmentsScreen() {
       key: "name",
       header: "Environment",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="flex items-center gap-2 font-medium text-foreground">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="flex flex-wrap items-center gap-2 font-medium text-foreground">
             {r.name}
             {r.isDefault ? (
               <Badge variant="success">
@@ -253,8 +246,7 @@ export function EnvironmentsScreen() {
             ) : null}
           </span>
           <span className="text-xs text-text-secondary">
-            key: {r.key || "—"}
-            {r.updatedAt ? ` · ${formatDate(r.updatedAt)}` : ""}
+            {r.isDefault ? "Unscoped reads resolve here" : "Scoped delivery target"}
           </span>
         </div>
       ),
@@ -270,7 +262,7 @@ export function EnvironmentsScreen() {
       key: "updated",
       header: "Updated",
       render: (r) => (
-        <span className="text-sm text-text-secondary">{formatDate(r.updatedAt) || "—"}</span>
+        <span className="whitespace-nowrap text-sm text-text-secondary">{formatDate(r.updatedAt) || "—"}</span>
       ),
     },
     {
@@ -315,19 +307,15 @@ export function EnvironmentsScreen() {
         title="Environments"
         description="Named delivery targets — production, staging, preview. Entries scope to one via environment_id; unscoped reads fall back to the default."
         actions={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setCreateOpen(true)}
-          >
+          <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" /> Create environment
           </Button>
         }
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
-        <div />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -354,12 +342,15 @@ export function EnvironmentsScreen() {
                       : "Create production first — it becomes the default everything unscoped reads from."
                   }
                   action={
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                      onClick={() => setCreateOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" /> Create environment
-                    </Button>
+                    rows.length ? (
+                      <Button variant="outline" onClick={() => setSearch("")}>
+                        <X className="h-4 w-4" /> Clear search
+                      </Button>
+                    ) : (
+                      <Button onClick={() => setCreateOpen(true)}>
+                        <Plus className="h-4 w-4" /> Create environment
+                      </Button>
+                    )
                   }
                 />
               </div>
@@ -379,15 +370,16 @@ export function EnvironmentsScreen() {
         open={!!renameTarget}
         onOpenChange={(open) => !open && setRenameTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Rename environment</DialogTitle>
             <DialogDescription>
               The key stays the same — delivery references keep working.
             </DialogDescription>
           </DialogHeader>
-          <Field label="Name">
+          <Field label="Name" htmlFor="env-rename">
             <Input
+              id="env-rename"
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
               onKeyDown={(e) => {
@@ -403,12 +395,7 @@ export function EnvironmentsScreen() {
             <Button variant="ghost" onClick={() => setRenameTarget(null)}>
               Cancel
             </Button>
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={handleRename}
-            >
-              Save
-            </Button>
+            <Button onClick={handleRename}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -417,7 +404,7 @@ export function EnvironmentsScreen() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete environment</DialogTitle>
             <DialogDescription>
@@ -433,7 +420,7 @@ export function EnvironmentsScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

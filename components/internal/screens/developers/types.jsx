@@ -11,8 +11,9 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
+import { CodeBlock } from "./code_block";
 import {
   contentClient,
   isSupabaseConfigured,
@@ -222,7 +223,7 @@ export function TypesScreen() {
         }
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       {loading ? (
         <TableSkeleton columns={[{ key: "types", header: "Types" }]} />
@@ -243,9 +244,7 @@ export function TypesScreen() {
               : "Fallback shapes — content_types is not defined yet (Phase 3)."
           }
         >
-          <pre className="max-h-[32rem] overflow-auto rounded-lg border border-border bg-surface-subtle p-3 font-mono text-xs text-foreground">
-            {output}
-          </pre>
+          <CodeBlock code={output} preClassName="max-h-[32rem]" />
         </SectionCard>
       )}
     </MainScreenWrapper>

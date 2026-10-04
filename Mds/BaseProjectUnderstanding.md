@@ -10,7 +10,7 @@ DO NOT LEAVE ANY COMMENTS IN ANY FILES
 Study and Follow the Existing File/Folder Structure, And Implement Followingly.
 
 Global Input Box Standard (Applied Project-Wide)
-- Use shared Input component from components/ui/input.jsx for all text-like input boxes.
+- Use the shared Input component from @geiger/ui/input for all text-like input boxes.
 - Core input box metrics:
 	- Border radius: 6px
 	- Horizontal padding: 14px

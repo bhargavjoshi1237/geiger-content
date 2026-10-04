@@ -12,10 +12,10 @@ and the shared kit (`components/internal/shared`).
 | Workspace screen | `components/internal/screens/<area>/<name>.jsx` | snake_case file, `*Screen` export |
 | Screen ↔ nav wiring | `components/internal/screens/registry.jsx` | title → component map |
 | Sidebar nav entries | `components/internal/sidebar/sidebar_nav.jsx` | `title` must match registry key |
-| Shared screen primitives | `components/internal/shared/screen_kit.jsx` | `ScreenHeader`, `StatsBar`, `DataTable`… |
+| Shared screen primitives | `@geiger/ui/screen-kit` | `ScreenHeader`, `StatsBar`, `DataTable`… |
 | Page-width wrappers | `components/internal/shared/screen_wrappers.jsx` | `MainScreenWrapper`, `SecondaryScreenWrapper` |
 | Lookups & formatters | `components/internal/screens/<area>/constants.js` | status/type `*_MAP`, `*_FILTER_OPTIONS`, `formatDate`/`currency` |
-| shadcn primitives | `components/ui/*` | `@/components/ui/<name>` |
+| shadcn primitives | `@geiger/ui/<name>` | Direct package imports |
 | Permissions catalog | `lib/rbac.js` | `WORKSPACE_PERMISSIONS`, dot-namespaced keys |
 | Supabase client | `lib/supabase/client.js` | `createClient()` (browser, activity-tracked) |
 | Data layer (per area) | `lib/supabase/<area>.js` | `list*/get*/create*/update*/softDelete*`, `normalize*/toRow` |
@@ -187,11 +187,21 @@ controls; it does not secure data.
 
 ## UI conventions
 
-- **Components:** prefer `shadcn/ui` primitives (`@/components/ui/*`) and
-  **Lucide** icons. Build screens out of the shared kit
-  (`@/components/internal/shared/screen_kit`) before writing bespoke layout —
+- **Components:** use suite primitives (`@geiger/ui/<name>`) and
+  **Lucide** icons. Import shared screen components directly
+  (`@geiger/ui/screen-kit`) before writing bespoke layout —
   `ScreenHeader`, `StatsBar`/`StatGrid`, `SectionCard`, `Toolbar` + `SearchInput`,
   `DataTable`, `StatusPill`, `EmptyState`, `SettingsList`/`SettingRow`, `Field`.
+  Import `SegmentedTabs` from `@geiger/ui/segmented-tabs`, chart components from
+  `@geiger/ui/chart`, and `Topbar` from `@geiger/ui/topbar`. Keep product-specific
+  data and navigation logic local; do not wrap or re-export available suite UI.
+  Use the suite's default appearance. Place screen layout on surrounding
+  containers instead of overriding component borders, backgrounds, typography,
+  or internal spacing.
+  For titled table sections, use `SectionCard bare` around the standard
+  `DataTable` (or the app's `OperationTable` / `TableSkeleton`). The heading sits
+  above the table, and the table provides the only frame. Do not put a framed
+  table inside another card.
 - **Screen frame:** `MainScreenWrapper` → `ScreenHeader` (title + description over
   a bottom divider, primary action on the right; **no** icon chip or badge) →
   `StatsBar` → `Toolbar` → `DataTable`. Match the Events Overview / All Events

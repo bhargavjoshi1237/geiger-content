@@ -14,11 +14,12 @@ import {
   SearchInput,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { listExperiments, updateExperiment } from "@/lib/supabase/experiments";
 import { useProject } from "@/context/project-context";
+import { ExperimentCell } from "./parts";
 
 const GOAL_HINTS = ["conversion", "click", "signup", "purchase", "retention"];
 
@@ -72,10 +73,7 @@ export function GoalsScreen() {
     {
       key: "exp", header: "Experiment",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
-          <span className="text-xs text-text-secondary">{r.status}</span>
-        </div>
+        <ExperimentCell name={r.name} meta={r.status} />
       ),
     },
     {
@@ -84,7 +82,8 @@ export function GoalsScreen() {
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <Input
             list="goal-hints"
-            className="h-8 max-w-52"
+            className="h-8 min-w-32 max-w-52"
+            aria-label={`Goal metric for ${r.name}`}
             value={drafts[r.id] ?? r.goalMetric ?? "conversion"}
             onChange={(e) => setDrafts((d) => ({ ...d, [r.id]: e.target.value }))}
           />

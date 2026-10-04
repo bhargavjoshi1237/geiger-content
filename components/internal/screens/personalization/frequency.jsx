@@ -2,20 +2,19 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CircleGauge, Plus, Trash2 } from "lucide-react";
+import { CircleGauge, Pause, Play, Plus, Trash2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
-  EmptyState,
   Field,
   ScreenHeader,
   SearchInput,
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { ActionMenu } from "@geiger/ui/action-menu";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -42,11 +41,7 @@ import {
 } from "@/lib/supabase/variants";
 import { listSlots } from "@/lib/supabase/slots";
 import { useProject } from "@/context/project-context";
-
-const CAP_STATUS_MAP = {
-  Active: { label: "Active", variant: "success", dotClass: "bg-emerald-400" },
-  Paused: { label: "Paused", variant: "neutral", dotClass: "bg-[#737373]" },
-};
+import { ACTIVE_STATUS_MAP, EmptyPanel } from "./personalization_kit";
 
 // Frequency Caps: max impressions of a slot per profile per window.
 export function FrequencyScreen() {
@@ -134,15 +129,20 @@ export function FrequencyScreen() {
   const columns = [
     {
       key: "slot", header: "Slot",
-      render: (r) => <span className="font-medium text-foreground">{slotName(r.slotId)}</span>,
+      render: (r) => <span className="block max-w-[20rem] truncate font-medium text-foreground">{slotName(r.slotId)}</span>,
     },
     {
       key: "cap", header: "Cap",
-      render: (r) => <span className="text-sm text-text-secondary">{r.maxImpressions} / {r.windowHours}h</span>,
+      render: (r) => (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-foreground tabular-nums">{r.maxImpressions} impressions</span>
+          <span className="text-xs text-text-secondary tabular-nums">per {r.windowHours}h window</span>
+        </div>
+      ),
     },
     {
       key: "status", header: "Status",
-      render: (r) => <StatusPill status={r.status} map={CAP_STATUS_MAP} />,
+      render: (r) => <StatusPill status={r.status} map={ACTIVE_STATUS_MAP} />,
     },
     {
       key: "actions", header: "", align: "right", className: "text-right",
@@ -150,7 +150,7 @@ export function FrequencyScreen() {
         <ActionMenu
           label="Cap actions"
           items={[
-            { label: r.status === "Active" ? "Pause" : "Activate", onSelect: () => toggleStatus(r) },
+            { icon: r.status === "Active" ? Pause : Play, label: r.status === "Active" ? "Pause" : "Activate", onSelect: () => toggleStatus(r) },
             { separator: true },
             { icon: Trash2, label: "Delete", variant: "destructive", onSelect: () => handleDelete(r) },
           ]}
@@ -170,7 +170,7 @@ export function FrequencyScreen() {
           </Button>
         }
       />
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
       <Toolbar>
         <span className="text-sm text-text-secondary">{filtered.length} caps</span>
         <SearchInput value={search} onChange={setSearch} placeholder="Search by slot…" />
@@ -183,21 +183,23 @@ export function FrequencyScreen() {
           data={filtered}
           getRowKey={(r) => r.id}
           empty={
-            <EmptyState
+            <EmptyPanel
               icon={CircleGauge}
               title={rows.length ? "No caps match your search" : "No frequency caps yet"}
               description={rows.length ? "Try clearing the search." : "Cap impressions per slot so visitors don't see the same content on repeat."}
-              action={
+              action={rows.length ? (
+                <Button variant="ghost" onClick={() => setSearch("")}>Clear search</Button>
+              ) : (
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setCreateOpen(true)}>
                   <Plus className="h-4 w-4" /> Create cap
                 </Button>
-              }
+              )}
             />
           }
         />
       )}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md bg-background">
+        <DialogContent className="max-h-[85vh] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create frequency cap</DialogTitle>
             <DialogDescription>Limit impressions of one slot per profile per window.</DialogDescription>
@@ -211,7 +213,7 @@ export function FrequencyScreen() {
                 </SelectContent>
               </Select>
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Max impressions">
                 <Input type="number" min="1" value={maxImpressions} onChange={(e) => setMaxImpressions(e.target.value)} />
               </Field>

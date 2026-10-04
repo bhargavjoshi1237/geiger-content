@@ -173,6 +173,23 @@ export function ProjectProvider({ children }) {
   );
 }
 
+// Fixed-project provider for the landing playground (like geiger-flow's PlaygroundProjectProvider): never queries public.projects.
+export function PlaygroundProjectProvider({ project = null, children }) {
+  const value = useMemo(
+    () => ({
+      project,
+      projectId: project?.id || null,
+      projects: project ? [project] : [],
+      loading: false,
+      setActiveProject: () => {},
+      createProject: async () => null,
+      refresh: async () => (project ? [project] : []),
+    }),
+    [project],
+  );
+  return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
+}
+
 export function useProject() {
   const ctx = useContext(ProjectContext);
   if (ctx === undefined) {

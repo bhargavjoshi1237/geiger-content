@@ -12,7 +12,7 @@ import {
 import {
   Field,
   SectionCard,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
 import {
@@ -40,7 +40,7 @@ function OverviewSection({ content, onPatch }) {
               rows={3}
             />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Author">
               <Input
                 value={content?.author || ""}
@@ -54,7 +54,7 @@ function OverviewSection({ content, onPatch }) {
                 onValueChange={(v) => patch({ locale: v })}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue/>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="en">English (en)</SelectItem>
@@ -83,7 +83,7 @@ function BasicsSection({ content, onPatch }) {
               placeholder="What's it called?"
             />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Slug">
               <Input
                 value={content?.slug || ""}
@@ -97,7 +97,7 @@ function BasicsSection({ content, onPatch }) {
                 onValueChange={(v) => patch({ type: v })}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue/>
                 </SelectTrigger>
                 <SelectContent>
                   {Object.keys(CONTENT_TYPE_MAP).map((t) => (
@@ -121,7 +121,7 @@ function BodySection({ content, onPatch }) {
     <div className="space-y-6">
       <SectionCard
         title="Body"
-        description="Portable JSON blocks, stored as text. Legacy plain text loads as one paragraph."
+        description="Compose the entry with headings and paragraphs."
       >
         <Field label="Body">
           <BodyEditor
@@ -163,7 +163,7 @@ function VisibilitySection({ content, onPatch }) {
               onValueChange={(v) => patch({ status: v })}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue/>
               </SelectTrigger>
               <SelectContent>
                 {Object.keys(CONTENT_STATUS_MAP).map((s) => (

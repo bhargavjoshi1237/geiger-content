@@ -2,28 +2,37 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Download, Merge, Upload } from "lucide-react";
+import {
+  Braces,
+  Download,
+  FileSpreadsheet,
+  FolderTree,
+  LayoutTemplate,
+  Loader2,
+  Merge,
+  Package,
+} from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   EmptyState,
   Field,
   ScreenHeader,
   SectionCard,
+  SettingRow,
+  SettingsList,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { LoadingArea } from "@geiger/ui";
+import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
-import { Input } from "@geiger/ui/input";
+import { FileInput } from "@geiger/ui/file-input";
 import { listContent, createContent } from "@/lib/supabase/content";
 import { listCollections } from "@/lib/supabase/collections";
 import { listSlots } from "@/lib/supabase/slots";
 import { useProject } from "@/context/project-context";
 
-// JSON + CSV round trip for workspace content. Exports snapshot entries,
-// collections and slots via the data layers and download as files; import
-// replays an entries JSON array through createContent with a per-row error
-// count so one bad row never aborts the batch.
+// JSON + CSV round trip: exports snapshot entries/collections/slots to files; import replays entries through createContent per row.
 function downloadFile(filename, text, mime) {
   const blob = new Blob([text], { type: `${mime};charset=utf-8` });
   const url = URL.createObjectURL(blob);
@@ -131,6 +140,44 @@ export function ImportExportScreen() {
     }
   };
 
+  const exportRows = [
+    {
+      key: "workspace",
+      icon: Package,
+      title: "Full workspace",
+      description: "Entries, collections and slots · JSON",
+      onExport: () => exportJson("workspace", { entries, collections, slots }),
+    },
+    {
+      key: "entries",
+      icon: Braces,
+      title: "Entries",
+      description: `${entries.length} rows · JSON`,
+      onExport: () => exportJson("entries", entries),
+    },
+    {
+      key: "collections",
+      icon: FolderTree,
+      title: "Collections",
+      description: `${collections.length} rows · JSON`,
+      onExport: () => exportJson("collections", collections),
+    },
+    {
+      key: "slots",
+      icon: LayoutTemplate,
+      title: "Slots",
+      description: `${slots.length} rows · JSON`,
+      onExport: () => exportJson("slots", slots),
+    },
+    {
+      key: "entries-csv",
+      icon: FileSpreadsheet,
+      title: "Entries spreadsheet",
+      description: `${entries.length} rows · CSV`,
+      onExport: exportEntriesCsv,
+    },
+  ];
+
   const handleImportFile = async (file) => {
     if (!file) return;
     if (!projectId) {
@@ -186,67 +233,51 @@ export function ImportExportScreen() {
       <StatsBar stats={stats} />
 
       {loading ? (
-        <TableSkeleton
-          columns={[
-            { key: "area", header: "Area" },
-            { key: "action", header: "Action" },
-          ]}
-        />
+        <LoadingArea panel size={48} label="Loading workspace data" />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           <SectionCard
+
             title="Export"
             description="Download the current workspace as files."
           >
-            <div className="grid gap-2">
-              <Button
-                variant="outline"
-                className="justify-start border-border bg-transparent text-foreground hover:bg-surface-active"
-                onClick={() =>
-                  exportJson("workspace", { entries, collections, slots })
-                }
-              >
-                <Download className="h-4 w-4" /> Full workspace JSON
-              </Button>
-              <Button
-                variant="outline"
-                className="justify-start border-border bg-transparent text-foreground hover:bg-surface-active"
-                onClick={() => exportJson("entries", entries)}
-              >
-                <Download className="h-4 w-4" /> Entries JSON ({entries.length})
-              </Button>
-              <Button
-                variant="outline"
-                className="justify-start border-border bg-transparent text-foreground hover:bg-surface-active"
-                onClick={() => exportJson("collections", collections)}
-              >
-                <Download className="h-4 w-4" /> Collections JSON ({collections.length})
-              </Button>
-              <Button
-                variant="outline"
-                className="justify-start border-border bg-transparent text-foreground hover:bg-surface-active"
-                onClick={() => exportJson("slots", slots)}
-              >
-                <Download className="h-4 w-4" /> Slots JSON ({slots.length})
-              </Button>
-              <Button
-                variant="outline"
-                className="justify-start border-border bg-transparent text-foreground hover:bg-surface-active"
-                onClick={exportEntriesCsv}
-              >
-                <Download className="h-4 w-4" /> Entries CSV ({entries.length})
-              </Button>
-            </div>
+            <SettingsList>
+              {exportRows.map((row) => (
+                <SettingRow
+                  key={row.key}
+                  icon={row.icon}
+                  title={row.title}
+                  description={row.description}
+                  control={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label={`Download ${row.title}`}
+                      className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                      onClick={row.onExport}
+                    >
+                      <Download className="h-4 w-4" />
+                      <span className="hidden sm:inline">Download</span>
+                    </Button>
+                  }
+                />
+              ))}
+            </SettingsList>
           </SectionCard>
 
           <SectionCard
+
             title="Import"
             description="Replay an entries JSON array through createContent — one bad row never aborts the batch."
           >
             <div className="grid gap-4">
-              <Field label="Entries JSON file">
-                <Input
-                  type="file"
+              <Field
+                label="Entries JSON file"
+                htmlFor="import-entries-file"
+                hint={projectId ? "Titles are required; ids are re-minted." : "Select a project before importing."}
+              >
+                <FileInput
+                  id="import-entries-file"
                   accept="application/json,.json"
                   disabled={importing || !projectId}
                   onChange={(e) => {
@@ -257,17 +288,21 @@ export function ImportExportScreen() {
                 />
               </Field>
               {importing ? (
-                <p className="text-sm text-text-secondary">
-                  <Upload className="mr-1 inline h-4 w-4" /> Importing…
+                <p className="inline-flex items-center gap-2 text-sm text-text-secondary">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Importing…
                 </p>
               ) : lastImport ? (
-                <div className="rounded-lg border border-border bg-surface-subtle p-3 text-sm">
-                  <p className="font-medium text-foreground">
-                    {lastImport.ok} of {lastImport.total} imported
-                    {lastImport.failed ? `, ${lastImport.failed} failed` : ""}
-                  </p>
+                <div className="rounded-lg border border-border bg-surface-card p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-foreground">
+                      {lastImport.ok} of {lastImport.total} imported
+                    </p>
+                    <Badge variant={lastImport.failed ? "warning" : "success"}>
+                      {lastImport.failed ? `${lastImport.failed} failed` : "All rows saved"}
+                    </Badge>
+                  </div>
                   {lastImport.errors.length > 0 ? (
-                    <ul className="mt-2 list-disc space-y-1 pl-5 font-mono text-xs text-text-secondary">
+                    <ul className="mt-3 list-disc space-y-1 break-words pl-5 font-mono text-xs text-text-secondary">
                       {lastImport.errors.map((err) => (
                         <li key={err}>{err}</li>
                       ))}
@@ -276,6 +311,7 @@ export function ImportExportScreen() {
                 </div>
               ) : (
                 <EmptyState
+                  className="py-10"
                   icon={Merge}
                   title="No import yet"
                   description="Choose an entries JSON file to start. Titles are required; ids are re-minted."

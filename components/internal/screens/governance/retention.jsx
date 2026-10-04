@@ -16,9 +16,10 @@ import {
   ScreenHeader,
   SearchInput,
   StatsBar,
+  StatusPill,
   Toolbar,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -38,6 +39,7 @@ import {
 } from "@geiger/ui/select";
 import { ActionMenu } from "@geiger/ui/action-menu";
 import {
+  RETENTION_ACTION_MAP,
   RETENTION_ACTION_OPTIONS,
   RETENTION_SCOPE_OPTIONS,
   formatDate,
@@ -52,17 +54,12 @@ import {
 import { getUser } from "@/lib/supabase/user";
 import { useProject } from "@/context/project-context";
 
-const ACTION_LABEL = Object.fromEntries(
-  RETENTION_ACTION_OPTIONS.map((o) => [o.value, o.label]),
-);
 const SCOPE_LABEL = Object.fromEntries(
   RETENTION_SCOPE_OPTIONS.map((o) => [o.value, o.label]),
 );
 
 function RetentionDialog({ open, onOpenChange, initial, onSave }) {
-  // Form state initializes from `initial` on mount. Callers pass a distinct
-  // `key` per edited rule (and reset on submit for the create case), so no
-  // sync-on-open effect is needed.
+  // State seeds from `initial` on mount; callers remount per edit via `key`.
   const [scope, setScope] = useState(initial?.scope || "entries");
   const [days, setDays] = useState(String(initial?.days ?? 365));
   const [action, setAction] = useState(initial?.action || "archive");
@@ -83,7 +80,7 @@ function RetentionDialog({ open, onOpenChange, initial, onSave }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
             {initial ? "Edit retention rule" : "Create retention rule"}
@@ -94,9 +91,9 @@ function RetentionDialog({ open, onOpenChange, initial, onSave }) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <Field label="Scope">
+          <Field label="Scope" htmlFor="retention-scope">
             <Select value={scope} onValueChange={setScope}>
-              <SelectTrigger>
+              <SelectTrigger id="retention-scope">
                 <SelectValue placeholder="Select a scope" />
               </SelectTrigger>
               <SelectContent>
@@ -108,8 +105,11 @@ function RetentionDialog({ open, onOpenChange, initial, onSave }) {
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Keep for (days)">
+          <Field label="Keep for (days)" htmlFor="retention-days">
             <Input
+              id="retention-days"
+              type="number"
+              min={1}
               value={days}
               onChange={(e) => setDays(e.target.value)}
               inputMode="numeric"
@@ -117,9 +117,9 @@ function RetentionDialog({ open, onOpenChange, initial, onSave }) {
               autoFocus
             />
           </Field>
-          <Field label="When expired">
+          <Field label="When expired" htmlFor="retention-action">
             <Select value={action} onValueChange={setAction}>
-              <SelectTrigger>
+              <SelectTrigger id="retention-action">
                 <SelectValue placeholder="Select an action" />
               </SelectTrigger>
               <SelectContent>
@@ -133,17 +133,10 @@ function RetentionDialog({ open, onOpenChange, initial, onSave }) {
           </Field>
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={submit}
-          >
+          <Button onClick={submit}>
             {initial ? "Save rule" : "Create rule"}
           </Button>
         </DialogFooter>
@@ -267,9 +260,11 @@ export function RetentionScreen() {
           <span className="font-medium text-foreground">
             {SCOPE_LABEL[r.scope] || r.scope}
           </span>
-          <span className="text-xs text-text-secondary">
-            {r.updatedAt ? formatDate(r.updatedAt) : ""}
-          </span>
+          {r.updatedAt ? (
+            <span className="text-xs text-text-secondary">
+              Updated {formatDate(r.updatedAt)}
+            </span>
+          ) : null}
         </div>
       ),
     },
@@ -277,7 +272,7 @@ export function RetentionScreen() {
       key: "days",
       header: "Keep for",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span className="whitespace-nowrap text-sm tabular-nums text-text-secondary">
           {r.days} {r.days === 1 ? "day" : "days"}
         </span>
       ),
@@ -286,9 +281,7 @@ export function RetentionScreen() {
       key: "action",
       header: "When expired",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
-          {ACTION_LABEL[r.action] || r.action}
-        </span>
+        <StatusPill status={r.action} map={RETENTION_ACTION_MAP} />
       ),
     },
     {
@@ -320,10 +313,7 @@ export function RetentionScreen() {
         title="Retention Policies"
         description="How long rows in each scope are kept, and whether expiry archives, soft-deletes, or purges them."
         actions={
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => setCreateOpen(true)}
-          >
+          <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" /> Create rule
           </Button>
         }
@@ -355,16 +345,19 @@ export function RetentionScreen() {
                   title={rows.length ? "No rules match your filters" : "No retention rules yet"}
                   description={
                     rows.length
-                      ? "Try clearing the search, or create a new rule."
+                      ? "Try a different search, or create a new rule."
                       : "Create your first retention rule to bound how long data is kept."
                   }
                   action={
-                    <Button
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                      onClick={() => setCreateOpen(true)}
-                    >
-                      <Plus className="h-4 w-4" /> Create rule
-                    </Button>
+                    rows.length ? (
+                      <Button variant="outline" onClick={() => setSearch("")}>
+                        Clear search
+                      </Button>
+                    ) : (
+                      <Button onClick={() => setCreateOpen(true)}>
+                        <Plus className="h-4 w-4" /> Create rule
+                      </Button>
+                    )
                   }
                 />
               </div>
@@ -393,7 +386,7 @@ export function RetentionScreen() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete retention rule</DialogTitle>
             <DialogDescription>
@@ -409,7 +402,7 @@ export function RetentionScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

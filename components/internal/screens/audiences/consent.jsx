@@ -13,7 +13,7 @@ import {
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import {
   Select,
   SelectContent,
@@ -151,13 +151,13 @@ export function ConsentScreen() {
             value={r.status}
             onValueChange={(v) => handleChange(r.purpose, v)}
           >
-            <SelectTrigger className="w-36">
-              <SelectValue />
+            <SelectTrigger className="ml-auto w-32 sm:w-36">
+              <SelectValue/>
             </SelectTrigger>
             <SelectContent>
-              {["granted", "denied", "pending"].map((s) => (
+              {Object.keys(CONSENT_STATUS_MAP).map((s) => (
                 <SelectItem key={s} value={s}>
-                  {s}
+                  {CONSENT_STATUS_MAP[s].label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -184,7 +184,7 @@ export function ConsentScreen() {
             setRows([]);
           }}
         >
-          <SelectTrigger className="w-72">
+          <SelectTrigger className="w-full sm:w-72">
             <SelectValue placeholder="Select a profile" />
           </SelectTrigger>
           <SelectContent>
@@ -202,7 +202,7 @@ export function ConsentScreen() {
       ) : (
         <DataTable
           columns={columns}
-          data={purposes}
+          data={profiles.length ? purposes : []}
           getRowKey={(r) => r.purpose}
           empty={
             <div className="rounded-xl border border-border bg-surface-subtle">
@@ -216,9 +216,12 @@ export function ConsentScreen() {
         />
       )}
       {selected ? (
-        <p className="text-xs text-text-secondary">
-          Showing consent for {selected.primaryIdentifier}. Unanswered purposes
-          count as pending (allowed until denied).
+        <p className="-mt-4 text-xs text-text-secondary">
+          Showing consent for{" "}
+          <span className="font-medium text-foreground break-all">
+            {selected.primaryIdentifier}
+          </span>
+          . Unanswered purposes count as pending (allowed until denied).
         </p>
       ) : null}
     </MainScreenWrapper>

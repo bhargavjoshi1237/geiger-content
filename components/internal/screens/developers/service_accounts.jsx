@@ -19,7 +19,7 @@ import {
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -72,7 +72,7 @@ function AccountDialog({ open, onOpenChange, initial, onSubmit }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
             {initial ? "Edit service account" : "Create service account"}
@@ -83,17 +83,18 @@ function AccountDialog({ open, onOpenChange, initial, onSubmit }) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <Field label="Name">
+          <Field label="Name" htmlFor="service-account-name">
             <Input
+              id="service-account-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. nightly-sync worker"
               autoFocus
             />
           </Field>
-          <Field label="Role">
+          <Field label="Role" htmlFor="service-account-role">
             <Select value={role} onValueChange={setRole}>
-              <SelectTrigger>
+              <SelectTrigger id="service-account-role">
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent>
@@ -352,7 +353,7 @@ export function ServiceAccountsScreen() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete service account</DialogTitle>
             <DialogDescription>
@@ -365,7 +366,7 @@ export function ServiceAccountsScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

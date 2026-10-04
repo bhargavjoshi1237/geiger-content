@@ -4,9 +4,9 @@
 export const CONTENT_STATUS_MAP = {
   Published: { label: "Published", variant: "success", dotClass: "bg-emerald-400" },
   "In review": { label: "In review", variant: "info", dotClass: "bg-sky-400" },
-  Draft: { label: "Draft", variant: "neutral", dotClass: "bg-[#737373]" },
+  Draft: { label: "Draft", variant: "neutral", dotClass: "bg-text-secondary" },
   Scheduled: { label: "Scheduled", variant: "purple", dotClass: "bg-violet-300" },
-  Archived: { label: "Archived", variant: "outline", dotClass: "bg-[#525252]" },
+  Archived: { label: "Archived", variant: "outline", dotClass: "bg-text-tertiary" },
 };
 
 export const CONTENT_TYPE_MAP = {
@@ -31,8 +31,8 @@ export const CONTENT_TYPE_FILTER_OPTIONS = [
 
 export const COLLECTION_STATUS_MAP = {
   Published: { label: "Published", variant: "success", dotClass: "bg-emerald-400" },
-  Draft: { label: "Draft", variant: "neutral", dotClass: "bg-[#737373]" },
-  Archived: { label: "Archived", variant: "outline", dotClass: "bg-[#525252]" },
+  Draft: { label: "Draft", variant: "neutral", dotClass: "bg-text-secondary" },
+  Archived: { label: "Archived", variant: "outline", dotClass: "bg-text-tertiary" },
 };
 
 export const ASSET_TYPE_MAP = {
@@ -48,13 +48,13 @@ export const ASSET_TYPES = Object.keys(ASSET_TYPE_MAP);
 export const ASSET_STATUS_MAP = {
   Ready: { label: "Ready", variant: "success", dotClass: "bg-emerald-400" },
   Processing: { label: "Processing", variant: "info", dotClass: "bg-sky-400" },
-  Archived: { label: "Archived", variant: "outline", dotClass: "bg-[#525252]" },
+  Archived: { label: "Archived", variant: "outline", dotClass: "bg-text-tertiary" },
 };
 
 export const SLOT_STATUS_MAP = {
   Active: { label: "Active", variant: "success", dotClass: "bg-emerald-400" },
-  Paused: { label: "Paused", variant: "neutral", dotClass: "bg-[#737373]" },
-  Archived: { label: "Archived", variant: "outline", dotClass: "bg-[#525252]" },
+  Paused: { label: "Paused", variant: "neutral", dotClass: "bg-text-secondary" },
+  Archived: { label: "Archived", variant: "outline", dotClass: "bg-text-tertiary" },
 };
 
 export function formatDate(iso) {

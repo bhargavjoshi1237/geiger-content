@@ -2,6 +2,17 @@
 
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 
-export function ThemeProvider({ children, ...props }) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+export function ThemeProvider({ children, scriptProps, ...props }) {
+  return (
+    <NextThemesProvider
+      {...props}
+      scriptProps={{
+        ...scriptProps,
+        // Execute before the server page paints; client renders keep the script inert.
+        type: typeof window === "undefined" ? "text/javascript" : "text/plain",
+      }}
+    >
+      {children}
+    </NextThemesProvider>
+  );
 }

@@ -1,12 +1,10 @@
-// Lookups & formatters for the Publishing area. Config only — never row data.
-// Row data lives behind lib/supabase/{content,publishing,versions,
-// environments,webhooks}.js; screens start empty + loading.
+// Publishing lookups & formatters — config only; row data comes from lib/supabase/*.
 
 export const QUEUE_STATUS_MAP = {
   Scheduled: { label: "Scheduled", variant: "purple", dotClass: "bg-violet-300" },
   "In review": { label: "In review", variant: "info", dotClass: "bg-sky-400" },
   Published: { label: "Published", variant: "success", dotClass: "bg-emerald-400" },
-  Draft: { label: "Draft", variant: "neutral", dotClass: "bg-[#737373]" },
+  Draft: { label: "Draft", variant: "neutral", dotClass: "bg-text-tertiary" },
 };
 
 export const QUEUE_STATUS_FILTER_OPTIONS = [
@@ -18,14 +16,24 @@ export const QUEUE_STATUS_FILTER_OPTIONS = [
 
 export const WEBHOOK_STATUS_MAP = {
   Active: { label: "Active", variant: "success", dotClass: "bg-emerald-400" },
-  Paused: { label: "Paused", variant: "neutral", dotClass: "bg-[#737373]" },
-  Disabled: { label: "Disabled", variant: "outline", dotClass: "bg-[#525252]" },
+  Paused: { label: "Paused", variant: "warning", dotClass: "bg-amber-400" },
+  Disabled: { label: "Disabled", variant: "outline", dotClass: "bg-text-tertiary" },
 };
 
 export const DELIVERY_STATUS_MAP = {
   Delivered: { label: "Delivered", variant: "success", dotClass: "bg-emerald-400" },
   Failed: { label: "Failed", variant: "danger", dotClass: "bg-red-400" },
-  Pending: { label: "Pending", variant: "neutral", dotClass: "bg-[#737373]" },
+  Pending: { label: "Pending", variant: "neutral", dotClass: "bg-text-tertiary" },
+};
+
+export const SITE_STATUS_MAP = {
+  Active: { label: "Active", variant: "success", dotClass: "bg-emerald-400" },
+  Paused: { label: "Paused", variant: "warning", dotClass: "bg-amber-400" },
+  Draft: { label: "Draft", variant: "neutral", dotClass: "bg-text-tertiary" },
+};
+
+export const INVALIDATION_STATUS_MAP = {
+  "Revalidation requested": { label: "Requested", variant: "info", dotClass: "bg-sky-400" },
 };
 
 export function formatDate(iso) {

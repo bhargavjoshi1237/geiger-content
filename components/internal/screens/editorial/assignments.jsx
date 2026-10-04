@@ -3,9 +3,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CheckCheck, Pencil, Plus, Trash2, UserCheck } from "lucide-react";
+import { LoadingArea } from "@geiger/ui";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
   EmptyState,
@@ -15,7 +15,7 @@ import {
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -94,7 +94,7 @@ function AssignmentDialog({ initial, entries, onClose, onSave }) {
   };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit assignment" : "New assignment"}</DialogTitle>
           <DialogDescription>
@@ -116,7 +116,7 @@ function AssignmentDialog({ initial, entries, onClose, onSave }) {
               </SelectContent>
             </Select>
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Assignee" htmlFor="assign-who">
               <Input
                 id="assign-who"
@@ -134,11 +134,11 @@ function AssignmentDialog({ initial, entries, onClose, onSave }) {
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Status">
               <Select value={draft.status} onValueChange={set("status")}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue/>
                 </SelectTrigger>
                 <SelectContent>
                   {ASSIGNMENT_STATUSES.map((s) => (
@@ -152,7 +152,7 @@ function AssignmentDialog({ initial, entries, onClose, onSave }) {
             <Field label="Priority">
               <Select value={draft.priority} onValueChange={set("priority")}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue/>
                 </SelectTrigger>
                 <SelectContent>
                   {ASSIGNMENT_PRIORITIES.map((p) => (
@@ -189,8 +189,7 @@ export function AssignmentsScreen() {
   const [status, setStatus] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  // Frozen once per mount for the overdue stat — impure clocks can't run
-  // during render.
+  // Frozen once per mount for the overdue stat — impure clocks can't run in render.
   const [now] = useState(() => Date.now());
   const { projectId } = useProject();
   const [userId, setUserId] = useState(null);
@@ -235,14 +234,12 @@ export function AssignmentsScreen() {
   const stats = useMemo(() => {
     const open = rows.filter((r) => r.status !== "Done");
     const overdue = open.filter((r) => r.dueAt && new Date(r.dueAt).getTime() < now);
+    const urgent = open.filter((r) => r.priority === "High" || r.priority === "Urgent");
     return [
-      { label: "Assignments", value: String(rows.length) },
+      { label: "Assignments", value: String(rows.length), footer: "Across all entries" },
       { label: "Open", value: String(open.length), footer: "Not done yet" },
-      {
-        label: "Overdue",
-        value: String(overdue.length),
-        footer: "Past due date",
-      },
+      { label: "Overdue", value: String(overdue.length), footer: "Past due date" },
+      { label: "High priority", value: String(urgent.length), footer: "Open, high or urgent" },
     ];
   }, [rows, now]);
 
@@ -302,12 +299,21 @@ export function AssignmentsScreen() {
       key: "entry",
       header: "Entry",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-md">
+          <span className="truncate font-medium text-foreground">
             {entryById[r.entryId]?.title || "Deleted entry"}
           </span>
-          <span className="text-xs text-text-secondary">
-            {r.assignee} · due {formatDate(r.dueAt)}
+          <span className="truncate text-xs text-text-secondary">
+            {r.assignee} ·{" "}
+            <span
+              className={
+                r.status !== "Done" && r.dueAt && new Date(r.dueAt).getTime() < now
+                  ? "text-red-400"
+                  : undefined
+              }
+            >
+              due {formatDate(r.dueAt)}
+            </span>
           </span>
         </div>
       ),
@@ -384,7 +390,7 @@ export function AssignmentsScreen() {
       />
       <StatsBar stats={stats} />
       <Toolbar>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <FilterDropdown
             value={status}
             onValueChange={setStatus}
@@ -399,7 +405,7 @@ export function AssignmentsScreen() {
         />
       </Toolbar>
       {loading ? (
-        <TableSkeleton columns={columns} />
+        <LoadingArea panel size={48} label="Loading assignments" />
       ) : (
         <DataTable
           columns={columns}
@@ -410,17 +416,33 @@ export function AssignmentsScreen() {
               <EmptyState
                 icon={UserCheck}
                 title={rows.length ? "No assignments match your filters" : "No assignments yet"}
-                description="Route entries to owners with due dates and priorities."
+                description={
+                  rows.length
+                    ? "Try a different search or clear the status filter."
+                    : "Route entries to owners with due dates and priorities."
+                }
                 action={
-                  <Button
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={() => {
-                      setEditing(null);
-                      setDialogOpen(true);
-                    }}
-                  >
-                    <Plus className="h-4 w-4" /> New assignment
-                  </Button>
+                  rows.length ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSearch("");
+                        setStatus("all");
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  ) : (
+                    <Button
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      onClick={() => {
+                        setEditing(null);
+                        setDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" /> New assignment
+                    </Button>
+                  )
                 }
               />
             </div>

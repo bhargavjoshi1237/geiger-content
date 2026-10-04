@@ -7,19 +7,26 @@ import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers"
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
-  EmptyState,
   ScreenHeader,
   SearchInput,
-  SectionCard,
   StatsBar,
+  StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { Badge } from "@geiger/ui/badge";
+import { Button } from "@geiger/ui/button";
 import { listVariants } from "@/lib/supabase/variants";
 import { listSlots } from "@/lib/supabase/slots";
 import { useProject } from "@/context/project-context";
+import { ACTIVE_STATUS_MAP, EmptyPanel, HowItWorks } from "./personalization_kit";
 
-// Component Targeting: which components (slots) have personalized variants
-// and how deep the coverage goes per component.
+const STEPS = [
+  { title: "Apps request a slot key", body: "Every slot is a decision surface; its variants are the choices." },
+  { title: "The engine picks a variant", body: "Among the slot's active variants, targeting, priority and weight decide the winner." },
+  { title: "No variants, no choice", body: "A slot without variants always serves its fallback entry. Add variants under Content Variants." },
+];
+
+// Component Targeting: which components (slots) have personalized variants and how deep coverage goes.
 export function ComponentTargetScreen() {
   const [variants, setVariants] = useState([]);
   const [slots, setSlots] = useState([]);
@@ -62,23 +69,29 @@ export function ComponentTargetScreen() {
     {
       key: "component", header: "Component",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.slot.name}</span>
-          <span className="text-xs text-text-secondary">key: {r.slot.key} · {r.slot.status}</span>
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-sm">
+          <span className="truncate font-medium text-foreground">{r.slot.name}</span>
+          <span className="truncate font-mono text-xs text-text-secondary">{r.slot.key}</span>
         </div>
       ),
     },
     {
-      key: "variants", header: "Variants",
-      render: (r) => <span className="text-sm text-text-secondary">{r.variants.length}</span>,
+      key: "coverage", header: "Coverage",
+      render: (r) => (r.variants.length
+        ? <Badge variant="success">Personalized</Badge>
+        : <Badge variant="neutral">Fallback only</Badge>),
     },
     {
-      key: "top", header: "Top priority",
-      render: (r) => (
-        <span className="text-sm text-text-secondary">
-          {r.variants.length ? Math.max(...r.variants.map((v) => Number(v.priority || 0))) : "—"}
-        </span>
-      ),
+      key: "status", header: "Status",
+      render: (r) => <StatusPill status={r.slot.status} map={ACTIVE_STATUS_MAP} />,
+    },
+    {
+      key: "variants", header: "Variants", align: "right", className: "tabular-nums text-text-secondary",
+      render: (r) => r.variants.length,
+    },
+    {
+      key: "top", header: "Top priority", align: "right", className: "tabular-nums text-text-secondary",
+      render: (r) => (r.variants.length ? Math.max(...r.variants.map((v) => Number(v.priority || 0))) : "—"),
     },
   ];
 
@@ -88,10 +101,7 @@ export function ComponentTargetScreen() {
         title="Component Targeting"
         description="Personalization coverage per component — every slot is a decision surface, variants are its choices."
       />
-      <StatsBar stats={stats} />
-      <SectionCard title="How it works" description="Applications request a slot key; the decision engine picks among that slot's active variants. A slot with no variants always serves its fallback entry. Add variants under Content Variants.">
-        <p className="text-sm text-text-secondary">Coverage is computed live from variants — no estimates, no sampled data.</p>
-      </SectionCard>
+      <StatsBar stats={stats} columns={3} />
       <Toolbar>
         <span className="text-sm text-text-secondary">{coverage.length} components</span>
         <SearchInput value={search} onChange={setSearch} placeholder="Search components…" />
@@ -103,9 +113,17 @@ export function ComponentTargetScreen() {
           columns={columns}
           data={coverage}
           getRowKey={(r) => r.slot.id}
-          empty={<EmptyState icon={Component} title="No components yet" description="Create slots under Content Slots first." />}
+          empty={
+            <EmptyPanel
+              icon={Component}
+              title={slots.length ? "No components match your search" : "No components yet"}
+              description={slots.length ? "Try a different name or key." : "Create slots under Content Slots first."}
+              action={slots.length ? <Button variant="ghost" onClick={() => setSearch("")}>Clear search</Button> : null}
+            />
+          }
         />
       )}
+      <HowItWorks steps={STEPS} description="Coverage is computed live from variants — no estimates, no sampled data." />
     </MainScreenWrapper>
   );
 }

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Download } from "lucide-react";
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { DataTable, ScreenHeader, SectionCard, StatsBar, StatusPill } from "@/components/internal/shared/screen_kit";
+import { DataTable, ScreenHeader, SectionCard, StatsBar, StatusPill } from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
@@ -18,14 +18,12 @@ import {
   BarChart,
   CartesianGrid,
   CHART_COLORS,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   GRID_STROKE,
   RANGE_OPTIONS,
   XAxis,
   YAxis,
 } from "./charts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@geiger/ui/chart";
 
 const STAGE_MAP = {
   Expanding: { label: "Expanding", variant: "success", dotClass: "bg-emerald-400" },
@@ -77,7 +75,7 @@ export function TopicInterestScreen() {
               <CartesianGrid stroke={GRID_STROKE} strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip content={<ChartTooltipContent/>} />
               {series.map((s) => (
                 <Area key={s.key} type="monotone" dataKey={s.key} stroke={`var(--color-${s.key})`} fill={`var(--color-${s.key})`} fillOpacity={0.16} strokeWidth={2} />
               ))}
@@ -98,7 +96,7 @@ export function TopicInterestScreen() {
               <CartesianGrid stroke={GRID_STROKE} strokeDasharray="3 3" horizontal={false} />
               <XAxis type="number" hide />
               <YAxis type="category" dataKey="topic" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={110} />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip content={<ChartTooltipContent/>} />
               <Bar dataKey="discovered" stackId="a" fill="var(--color-discovered)" />
               <Bar dataKey="learning" stackId="a" fill="var(--color-learning)" />
               <Bar dataKey="evaluating" stackId="a" fill="var(--color-evaluating)" />
@@ -107,7 +105,7 @@ export function TopicInterestScreen() {
           </ChartContainer>
         </SectionCard>
       </div>
-      <SectionCard title="Topic leaderboard" description="Interest score, momentum, and coverage.">
+      <SectionCard bare title="Topic leaderboard" description="Interest score, momentum, and coverage.">
         <DataTable
           columns={[
             { key: "topic", header: "Topic", render: (r) => <span className="font-medium text-foreground">{r.topic}</span> },

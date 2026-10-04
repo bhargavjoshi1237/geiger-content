@@ -15,7 +15,7 @@ import {
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -68,7 +68,7 @@ function SourceDialog({ initial, onClose, onSave }) {
   };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit source" : "New external source"}</DialogTitle>
           <DialogDescription>
@@ -85,11 +85,11 @@ function SourceDialog({ initial, onClose, onSave }) {
               autoFocus
             />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Type">
               <Select value={draft.type} onValueChange={set("type")}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue/>
                 </SelectTrigger>
                 <SelectContent>
                   {SOURCE_TYPES.map((t) => (
@@ -103,7 +103,7 @@ function SourceDialog({ initial, onClose, onSave }) {
             <Field label="Status">
               <Select value={draft.status} onValueChange={set("status")}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue/>
                 </SelectTrigger>
                 <SelectContent>
                   {SOURCE_STATUSES.map((s) => (
@@ -187,6 +187,11 @@ export function SourcesScreen() {
         footer: "Ready to import from",
       },
       {
+        label: "Syncing",
+        value: String(count((r) => r.status === "Syncing")),
+        footer: "Import in progress",
+      },
+      {
         label: "Needs attention",
         value: String(
           count((r) => r.status === "Error" || r.status === "Disconnected"),
@@ -255,9 +260,9 @@ export function SourcesScreen() {
       key: "name",
       header: "Source",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
-          <span className="max-w-72 truncate text-xs text-text-secondary">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-md">
+          <span className="truncate font-medium text-foreground" title={r.name}>{r.name}</span>
+          <span className="block max-w-72 truncate text-xs text-text-secondary" title={r.url}>
             {r.url || "no URL yet"}
           </span>
         </div>
@@ -387,7 +392,7 @@ export function SourcesScreen() {
         />
       )}
       <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete source</DialogTitle>
             <DialogDescription>
@@ -400,7 +405,7 @@ export function SourcesScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

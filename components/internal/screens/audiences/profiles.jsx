@@ -18,7 +18,7 @@ import {
   StatsBar,
   Toolbar,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -54,7 +54,7 @@ function CreateProfileDialog({ open, onOpenChange, onCreate }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[85vh] w-[calc(100%-2rem)] overflow-y-auto bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create profile</DialogTitle>
           <DialogDescription>
@@ -81,8 +81,7 @@ function CreateProfileDialog({ open, onOpenChange, onCreate }) {
         </div>
         <DialogFooter>
           <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            variant="ghost"
             onClick={() => onOpenChange(false)}
           >
             Cancel
@@ -184,8 +183,8 @@ export function ProfilesScreen() {
       key: "identifier",
       header: "Profile",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-xs">
+          <span className="truncate font-medium text-foreground">
             {r.primaryIdentifier || "—"}
           </span>
           <span className="text-xs text-text-secondary">
@@ -200,7 +199,7 @@ export function ProfilesScreen() {
       key: "aliases",
       header: "Aliases",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span className="block max-w-[16rem] truncate text-sm text-text-secondary sm:max-w-sm">
           {(r.identifiers || []).slice(0, 3).join(", ") || "—"}
           {(r.identifiers || []).length > 3
             ? ` +${r.identifiers.length - 3} more`
@@ -212,7 +211,7 @@ export function ProfilesScreen() {
       key: "updated",
       header: "Last active",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span className="whitespace-nowrap text-sm text-text-secondary">
           {formatDate(r.updatedAt) || "—"}
         </span>
       ),
@@ -256,7 +255,6 @@ export function ProfilesScreen() {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <div />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -312,12 +310,12 @@ export function ProfilesScreen() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete profile</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete{" "}
-              <span className="font-medium text-foreground">
+              <span className="break-all font-medium text-foreground">
                 {deleteTarget?.primaryIdentifier}
               </span>
               ? Its traits and consent rows go with it.
@@ -328,7 +326,7 @@ export function ProfilesScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

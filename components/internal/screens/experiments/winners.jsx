@@ -11,13 +11,14 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import {
   experimentResults,
   listExperiments,
   listExperimentVariants,
 } from "@/lib/supabase/experiments";
 import { useProject } from "@/context/project-context";
+import { ExperimentCell } from "./parts";
 
 function confidenceNote(exposures, rate, runnerUpRate) {
   if (exposures < 100) return "Low confidence — fewer than 100 exposures. Keep running before acting.";
@@ -82,23 +83,20 @@ export function WinnersScreen() {
     {
       key: "exp", header: "Experiment",
       render: (s) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{s.experiment.name}</span>
-          <span className="text-xs text-text-secondary">goal: {s.experiment.goalMetric}</span>
-        </div>
+        <ExperimentCell name={s.experiment.name} meta={`Goal: ${s.experiment.goalMetric}`} />
       ),
     },
     {
       key: "suggestion", header: "Suggested winner",
       render: (s) => (
-        <span className="text-sm text-foreground">
+        <span className="block max-w-[16rem] whitespace-normal break-words text-sm text-foreground">
           {s.name ? `${s.name} (${(s.top.rate * 100).toFixed(1)}% on ${s.top.exposures})` : "—"}
         </span>
       ),
     },
     {
       key: "confidence", header: "Confidence",
-      render: (s) => <span className="text-sm text-text-secondary">{s.note}</span>,
+      render: (s) => <span className="block max-w-[20rem] whitespace-normal text-sm text-text-secondary sm:max-w-lg">{s.note}</span>,
     },
   ];
 

@@ -14,7 +14,7 @@ import {
   SearchInput,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import { ActionMenu } from "@geiger/ui/action-menu";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import {
   createField,
   listContentTypes,
@@ -100,7 +101,7 @@ function FieldDialog({ initial, position, onClose, onSave }) {
   };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit field" : "New field"}</DialogTitle>
           <DialogDescription>
@@ -109,7 +110,7 @@ function FieldDialog({ initial, position, onClose, onSave }) {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Label" htmlFor="field-label">
               <Input
                 id="field-label"
@@ -127,11 +128,11 @@ function FieldDialog({ initial, position, onClose, onSave }) {
               />
             </Field>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Data type">
               <Select value={draft.dataType} onValueChange={set("dataType")}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue/>
                 </SelectTrigger>
                 <SelectContent>
                   {DATA_TYPES.map((t) => (
@@ -155,7 +156,7 @@ function FieldDialog({ initial, position, onClose, onSave }) {
                 onValueChange={(v) => set("localized")(v === "yes")}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue/>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="no">No</SelectItem>
@@ -251,7 +252,11 @@ export function FieldSchemasScreen() {
 
   const stats = useMemo(
     () => [
-      { label: "Fields", value: String(fields.length) },
+      {
+        label: "Fields",
+        value: String(fields.length),
+        footer: activeType ? `On ${activeType.name}` : "No type selected",
+      },
       {
         label: "Required",
         value: String(fields.filter((f) => f.validation?.required).length),
@@ -262,8 +267,13 @@ export function FieldSchemasScreen() {
         value: String(fields.filter((f) => f.localized).length),
         footer: "Vary per locale",
       },
+      {
+        label: "With rules",
+        value: String(fields.filter((f) => Object.keys(f.validation || {}).length).length),
+        footer: "Have validation",
+      },
     ],
-    [fields],
+    [fields, activeType],
   );
 
   const handleSave = async (draft) => {
@@ -312,9 +322,9 @@ export function FieldSchemasScreen() {
       key: "label",
       header: "Field",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.label}</span>
-          <span className="text-xs text-text-secondary">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-md">
+          <span className="truncate font-medium text-foreground" title={r.label}>{r.label}</span>
+          <span className="truncate text-xs text-text-secondary">
             {r.key} · position {r.position}
             {r.validation?.required ? " · required" : ""}
             {r.localized ? " · localized" : ""}
@@ -335,7 +345,7 @@ export function FieldSchemasScreen() {
       key: "rules",
       header: "Rules",
       render: (r) => (
-        <span className="max-w-56 truncate font-mono text-xs text-text-secondary">
+        <span className="block max-w-56 truncate font-mono text-xs text-text-secondary" title={JSON.stringify(r.validation || {})}>
           {Object.keys(r.validation || {}).length
             ? JSON.stringify(r.validation)
             : "—"}
@@ -372,65 +382,50 @@ export function FieldSchemasScreen() {
     },
   ];
 
-  const skeletonColumns = [{ key: "label", header: "Field" }];
-
   return (
     <MainScreenWrapper>
       <ScreenHeader
         title="Field Schemas"
         description="Fields belong to a content type and validate entries.data on save."
         actions={
-          <div className="flex items-center gap-2">
-            <Select value={typeId} onValueChange={pickType}>
-              <SelectTrigger className="w-52">
-                <SelectValue placeholder="Select a type" />
-              </SelectTrigger>
-              <SelectContent>
-                {types.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              disabled={!typeId}
-              onClick={() => {
-                setEditing(null);
-                setDialogOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4" /> New field
-            </Button>
-          </div>
+          <Button
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={!typeId}
+            onClick={() => {
+              setEditing(null);
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" /> New field
+          </Button>
         }
       />
       <StatsBar stats={stats} />
       <Toolbar>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-text-secondary">
-            {activeType ? `Schema for ${activeType.name}` : "No type selected"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={typeId} onValueChange={pickType} disabled={!types.length}>
+            <SelectTrigger className="h-9 w-full sm:w-56" aria-label="Content type">
+              <SelectValue placeholder="Select a type" />
             </SelectTrigger>
             <SelectContent>
-              {DATA_TYPE_FILTER_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
+              {types.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <SearchInput value={search} onChange={setSearch} placeholder="Search fields…" />
+          <FilterDropdown
+            value={typeFilter}
+            onValueChange={setTypeFilter}
+            options={DATA_TYPE_FILTER_OPTIONS}
+            height="h-9"
+          />
         </div>
+        <SearchInput value={search} onChange={setSearch} placeholder="Search fields…" />
       </Toolbar>
       {loading || loadingFields ? (
-        <TableSkeleton columns={skeletonColumns} />
+        <TableSkeleton columns={columns} />
       ) : (
         <DataTable
           columns={columns}
@@ -450,7 +445,9 @@ export function FieldSchemasScreen() {
                 description={
                   !types.length
                     ? "Fields attach to a type — define one under Content Types."
-                    : "Add typed, validated fields entries must fill in."
+                    : fields.length
+                      ? "Try clearing the search or data type filter."
+                      : "Add typed, validated fields entries must fill in."
                 }
                 action={
                   typeId ? (

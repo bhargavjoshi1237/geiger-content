@@ -1,77 +1,64 @@
 "use client";
 
-import React, { Suspense, useState } from "react";
-import { AppSidebar } from "@/components/internal/sidebar/sidebar";
-import { Topbar } from "@/components/internal/topbar/topbar";
-import { SidebarProvider, SidebarInset } from "@geiger/ui/sidebar";
-import { ComingSoonScreen } from "@/components/internal/screens/coming_soon";
-import {
-  getScreen,
-  getScreenComponent,
-} from "@/components/internal/screens/registry";
-import { workspaceNav } from "@/components/internal/sidebar/sidebar_nav";
-import { ProjectProvider } from "@/context/project-context";
+import React, { useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { WorkspaceShell } from "@/components/internal/workspace/workspace_shell";
+import { PlaygroundProjectProvider } from "@/context/project-context";
+import { WorkspaceUrlContext, useMemoryWorkspaceUrl } from "@/lib/hooks/use-workspace-url";
+import { createDemoClient } from "@/supabase/demo/demo-client";
+import { setDemoClient, setDemoWriteHandler } from "@/supabase/demo/demo-mode";
+import { DEMO_PROJECT } from "@/supabase/demo/demo-store";
 
-// Live, embeddable copy of the Content dashboard used on the landing page.
-// Mirrors the /project workspace but fills its container (h-full) instead of the
-// viewport so it can be mounted inside the playground showcase. The tab is local
-// state here (not the URL) — it's a throwaway, fully interactive instance of the
-// real interface. No save, no load.
-function ContentPlaygroundContent() {
-  const [currentTab, setCurrentTab] = useState("All Content");
+// Live, embeddable copy of the Content workspace for the landing page (like geiger-flow's FlowPlayground):
+// the same WorkspaceShell as /project, on the demonstrator project's fixtures, read-only, URL untouched.
 
-  const findActiveItem = () => {
-    for (const item of workspaceNav) {
-      if (item.title === currentTab) return item;
-      const sub = item.subItems?.find((s) => s.title === currentTab);
-      if (sub) return sub;
-    }
-    return workspaceNav[0] || { title: "Overview" };
-  };
+const demoClient = createDemoClient();
 
-  const activeItem = findActiveItem();
-  const screen = getScreen(activeItem.title);
-  const screenComponent = getScreenComponent(activeItem.title);
+// Armed when this lazy chunk evaluates, i.e. before any screen mounts: a screen that fetched a tick
+// early would hit the real client, get nothing, and sit on an empty state.
+setDemoClient(demoClient);
+
+function PlaygroundWorkspace() {
+  const workspaceUrl = useMemoryWorkspaceUrl(DEMO_PROJECT.id, "Overview");
+  const armedRef = useRef(false);
+
+  // Disarm on unmount so a later client-side route can't render fixtures. Deferred a microtask because
+  // StrictMode's simulated remount runs this cleanup and immediately re-arms.
+  useEffect(() => {
+    armedRef.current = true;
+    setDemoClient(demoClient);
+    return () => {
+      armedRef.current = false;
+      queueMicrotask(() => {
+        if (!armedRef.current) setDemoClient(null);
+      });
+    };
+  }, []);
+
+  // One message for every rejected write; the fixed id collapses a burst into a single toast.
+  useEffect(() => {
+    setDemoWriteHandler(() =>
+      toast.error("This is a read-only demo.", {
+        id: "playground-read-only",
+        description: "Changes aren't saved here. Open the workspace to try it for real.",
+      }),
+    );
+    return () => setDemoWriteHandler(null);
+  }, []);
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-background font-sans text-foreground selection:bg-surface-strong">
-      <SidebarProvider
-        className="!flex h-full min-w-0 flex-col"
-        style={{ flexDirection: "column" }}
-      >
-        <Topbar onNavigate={setCurrentTab} />
-        <div className="relative flex flex-1 overflow-hidden">
-          <AppSidebar activeTab={currentTab} onTabChange={setCurrentTab} />
-          <SidebarInset className="relative flex h-full flex-1 flex-col overflow-hidden border-none bg-transparent">
-            <div className="pointer-events-none absolute right-0 top-0 h-[300px] w-[500px] rounded-full bg-foreground/[0.02] blur-[120px]" />
-            <main
-              aria-label={`${activeItem.title} workspace`}
-              className="relative z-10 min-w-0 flex-1 overflow-y-auto p-4 md:p-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
-              {screenComponent
-                ? React.createElement(screenComponent)
-                : React.createElement(ComingSoonScreen, {
-                    ...screen,
-                    onNavigate: setCurrentTab,
-                  })}
-            </main>
-          </SidebarInset>
-        </div>
-      </SidebarProvider>
-    </div>
+    <WorkspaceUrlContext.Provider value={workspaceUrl}>
+      <WorkspaceShell className="h-full" />
+    </WorkspaceUrlContext.Provider>
   );
 }
 
-// Screens may read the active project via useProject(), so the playground brings
-// its own ProjectProvider (like the real shell). Suspense matches the suite
-// pattern. On the public landing no project resolves, so it stays project-less.
+// No RbacProvider: useRbac() falls back to permissive, so the demo reader sees every screen.
 export function ContentPlayground() {
   return (
-    <Suspense fallback={<div className="h-full w-full bg-background" />}>
-      <ProjectProvider>
-        <ContentPlaygroundContent />
-      </ProjectProvider>
-    </Suspense>
+    <PlaygroundProjectProvider project={DEMO_PROJECT}>
+      <PlaygroundWorkspace />
+    </PlaygroundProjectProvider>
   );
 }
 

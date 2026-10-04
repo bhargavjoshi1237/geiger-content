@@ -12,7 +12,7 @@ export const EVENT_TYPE_MAP = {
   session_start: {
     label: "Session start",
     variant: "neutral",
-    dotClass: "bg-[#737373]",
+    dotClass: "bg-text-tertiary",
   },
   click: { label: "Click", variant: "purple", dotClass: "bg-violet-300" },
   signup: { label: "Signup", variant: "success", dotClass: "bg-emerald-400" },
@@ -28,8 +28,8 @@ export const EVENT_TYPE_FILTER_OPTIONS = [
 
 export const CONSENT_STATUS_MAP = {
   granted: { label: "Granted", variant: "success", dotClass: "bg-emerald-400" },
-  denied: { label: "Denied", variant: "outline", dotClass: "bg-red-400" },
-  pending: { label: "Pending", variant: "neutral", dotClass: "bg-[#737373]" },
+  denied: { label: "Denied", variant: "danger", dotClass: "bg-red-400" },
+  pending: { label: "Pending", variant: "neutral", dotClass: "bg-text-tertiary" },
 };
 
 export const CONSENT_PURPOSES = ["analytics", "personalization", "marketing"];
@@ -46,8 +46,8 @@ export const CONNECTION_TYPES = Object.keys(CONNECTION_TYPE_MAP);
 
 export const CONNECTION_STATUS_MAP = {
   Active: { label: "Active", variant: "success", dotClass: "bg-emerald-400" },
-  Paused: { label: "Paused", variant: "neutral", dotClass: "bg-[#737373]" },
-  Error: { label: "Error", variant: "outline", dotClass: "bg-red-400" },
+  Paused: { label: "Paused", variant: "neutral", dotClass: "bg-text-tertiary" },
+  Error: { label: "Error", variant: "danger", dotClass: "bg-red-400" },
 };
 
 export const SEGMENT_OPERATORS = [

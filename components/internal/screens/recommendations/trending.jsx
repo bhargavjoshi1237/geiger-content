@@ -11,13 +11,13 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { Badge } from "@geiger/ui/badge";
 import { listContent } from "@/lib/supabase/content";
 import { useProject } from "@/context/project-context";
+import { EMPTY_PANEL_CLASS } from "./constants";
 
-// Trending Content: recency-weighted ranking as a proxy for trending.
-// The Phase 5 metrics_daily pipeline is unbuilt, so every score here is
-// labeled an estimate — never presented as measured traffic.
+// Trending Content: recency-weighted proxy for trending; every score is labeled an estimate until metrics_daily exists.
 export function TrendingScreen() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,22 +55,27 @@ export function TrendingScreen() {
     {
       key: "entry", header: "Entry",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.entry.title || r.entry.slug}</span>
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-lg">
+          <span className="line-clamp-2 font-medium text-foreground">{r.entry.title || r.entry.slug}</span>
           <span className="text-xs text-text-secondary">{r.entry.status} · {r.ageDays < 1 ? "today (estimate)" : `${Math.round(r.ageDays)}d ago (estimate)`}</span>
         </div>
       ),
     },
     {
-      key: "score", header: "Trend score",
-      render: (r) => <span className="text-sm text-foreground">{r.score.toFixed(2)} (est.)</span>,
+      key: "score", header: "Trend score", align: "right",
+      render: (r) => (
+        <span className="inline-flex items-center justify-end gap-2">
+          <span className="text-sm font-semibold tabular-nums text-foreground">{r.score.toFixed(2)}</span>
+          <Badge variant="warning">est.</Badge>
+        </span>
+      ),
     },
   ];
 
   return (
     <MainScreenWrapper>
       <ScreenHeader title="Trending Content" description="Freshest-first ranking — an estimate until real consumption metrics land." />
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
       <SectionCard title="Estimate, not measurement" description="True trending needs the Phase 5 events → metrics_daily pipeline. Until then this screen ranks by recency and labels every score as estimated.">
         <p className="text-sm text-text-secondary">Nothing here is presented as traffic.</p>
       </SectionCard>
@@ -81,7 +86,7 @@ export function TrendingScreen() {
           columns={columns}
           data={trending}
           getRowKey={(r) => r.entry.id}
-          empty={<EmptyState icon={TrendingUp} title="No entries yet" description="Publish content to see trending estimates." />}
+          empty={<EmptyState icon={TrendingUp} title="No entries yet" description="Publish content to see trending estimates." className={EMPTY_PANEL_CLASS} />}
         />
       )}
     </MainScreenWrapper>

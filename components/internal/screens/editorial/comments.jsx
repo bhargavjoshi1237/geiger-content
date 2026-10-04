@@ -6,16 +6,8 @@ import { CheckCheck, MessageSquareText, Plus, Undo2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
-import {
-  DataTable,
-  EmptyState,
-  Field,
-  ScreenHeader,
-  SearchInput,
-  StatsBar,
-  StatusPill,
-  Toolbar,
-} from "@/components/internal/shared/screen_kit";
+import { DataTable, EmptyState, Field, ScreenHeader, SearchInput, StatsBar, StatusPill, Toolbar } from "@geiger/ui/screen-kit";
+import { SegmentedTabs } from "@geiger/ui/segmented-tabs";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
@@ -64,7 +56,7 @@ function NewThreadDialog({ entries, onClose, onSave }) {
   };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-background">
+      <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 sm:max-w-lg bg-background">
         <DialogHeader>
           <DialogTitle>New thread</DialogTitle>
           <DialogDescription>
@@ -289,8 +281,9 @@ export function CommentsScreen() {
     {
       key: "thread",
       header: "Thread",
+      className: "min-w-[16rem] whitespace-normal",
       render: (t) => (
-        <div className="flex flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-foreground">
               {t.entry?.title || "Deleted entry"}
@@ -305,7 +298,7 @@ export function CommentsScreen() {
           </div>
           <div className="flex flex-col gap-1.5">
             {t.replies.map((r) => (
-              <p key={r.id} className="text-sm text-text-secondary">
+              <p key={r.id} className="whitespace-pre-wrap break-words text-sm text-text-secondary">
                 {r.body}
                 <span className="ml-2 text-xs text-text-tertiary">
                   {formatDateTime(r.createdAt)}
@@ -381,18 +374,14 @@ export function CommentsScreen() {
       />
       <StatsBar stats={stats} />
       <Toolbar>
-        <div className="flex items-center gap-2">
-          {["all", "open", "resolved"].map((v) => (
-            <Badge
-              key={v}
-              variant={filter === v ? "info" : "neutral"}
-              className="cursor-pointer"
-              onClick={() => setFilter(v)}
-            >
-              {v === "all" ? "All" : THREAD_STATUS_MAP[v].label}
-            </Badge>
-          ))}
-        </div>
+        <SegmentedTabs
+          value={filter}
+          onChange={setFilter}
+          tabs={["all", "open", "resolved"].map((value) => ({
+            value,
+            label: value === "all" ? "All" : THREAD_STATUS_MAP[value].label,
+          }))}
+        />
         <SearchInput
           value={search}
           onChange={setSearch}

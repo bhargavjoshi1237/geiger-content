@@ -8,25 +8,25 @@ import {
   ListPagination,
   usePagination,
 } from "@/components/internal/shared/pagination";
-import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
   EmptyState,
   ScreenHeader,
   SearchInput,
   StatsBar,
+  StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { LoadingArea } from "@geiger/ui";
+import { Button } from "@geiger/ui/button";
+import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import {
   contentClient,
   isSupabaseConfigured,
 } from "@/supabase/components/content-client";
 import { useProject } from "@/context/project-context";
 
-// Merged read-only view over recent webhook deliveries (Phase 2:
-// `content.webhook_deliveries`) and the audit trail (Phase 4:
-// `content.audit_log`). Both tables may not exist yet — a missing table
-// degrades to "no rows", never a crash.
+// Read-only merge of webhook deliveries (Phase 2) and the audit log (Phase 4); a missing table degrades to no rows.
 async function fetchRecent(table, orderColumn) {
   if (!isSupabaseConfigured()) return [];
   try {
@@ -48,6 +48,17 @@ async function fetchRecent(table, orderColumn) {
   }
 }
 
+const KIND_MAP = {
+  Webhook: { label: "Webhook", variant: "info", dotClass: "bg-sky-400" },
+  Audit: { label: "Audit", variant: "purple", dotClass: "bg-violet-300" },
+};
+
+const KIND_FILTER_OPTIONS = [
+  { value: "all", label: "All kinds" },
+  { value: "Webhook", label: "Webhooks" },
+  { value: "Audit", label: "Audits" },
+];
+
 function formatTime(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -60,6 +71,7 @@ export function LogsScreen() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [kind, setKind] = useState("all");
 
   useEffect(() => {
     let alive = true;
@@ -106,13 +118,16 @@ export function LogsScreen() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) =>
-      `${r.kind} ${r.summary} ${r.status}`.toLowerCase().includes(q),
-    );
-  }, [rows, search]);
+    return rows.filter((r) => {
+      if (kind !== "all" && r.kind !== kind) return false;
+      if (q && !`${r.kind} ${r.summary} ${r.status}`.toLowerCase().includes(q))
+        return false;
+      return true;
+    });
+  }, [rows, search, kind]);
 
-  const pager = usePagination(filtered, { resetKey: search });
+  const pager = usePagination(filtered, { resetKey: `${search}|${kind}` });
+  const hasFilters = Boolean(search.trim()) || kind !== "all";
 
   const stats = useMemo(
     () => [
@@ -135,25 +150,28 @@ export function LogsScreen() {
     {
       key: "kind",
       header: "Kind",
-      render: (r) => (
-        <span className="text-sm text-muted-foreground">{r.kind}</span>
-      ),
+      render: (r) => <StatusPill status={r.kind} map={KIND_MAP} />,
     },
     {
       key: "summary",
       header: "Event",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.summary}</span>
-          <span className="text-xs text-text-secondary">{r.status}</span>
+        <div className="flex min-w-0 max-w-md flex-col gap-1">
+          <span className="truncate font-medium text-foreground" title={r.summary}>
+            {r.summary}
+          </span>
+          <span className="truncate text-xs text-text-secondary">{r.status}</span>
         </div>
       ),
     },
     {
       key: "at",
       header: "At",
+      align: "right",
       render: (r) => (
-        <span className="text-sm text-text-secondary">{formatTime(r.at)}</span>
+        <span className="whitespace-nowrap text-sm text-text-secondary">
+          {formatTime(r.at)}
+        </span>
       ),
     },
   ];
@@ -165,10 +183,15 @@ export function LogsScreen() {
         description="Recent webhook deliveries and audit events, newest first. Read-only."
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
-        <div />
+        <FilterDropdown
+          value={kind}
+          onValueChange={setKind}
+          options={KIND_FILTER_OPTIONS}
+          height="h-9"
+        />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -177,7 +200,7 @@ export function LogsScreen() {
       </Toolbar>
 
       {loading ? (
-        <TableSkeleton columns={columns} />
+        <LoadingArea panel size={48} label="Loading logs" />
       ) : (
         <div className="space-y-5">
           <DataTable
@@ -186,11 +209,31 @@ export function LogsScreen() {
             getRowKey={(r) => r.id}
             empty={
               <div className="rounded-xl border border-border bg-surface-subtle">
-                <EmptyState
-                  icon={Activity}
-                  title="No log events yet"
-                  description="Webhook deliveries land with Phase 2 and audit events with Phase 4 — this view lights up automatically."
-                />
+                {rows.length > 0 && hasFilters ? (
+                  <EmptyState
+                    icon={Activity}
+                    title="No events match your filters"
+                    description="Try a different kind or clear the search."
+                    action={
+                      <Button
+                        variant="outline"
+                        className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+                        onClick={() => {
+                          setSearch("");
+                          setKind("all");
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    icon={Activity}
+                    title="No log events yet"
+                    description="Webhook deliveries land with Phase 2 and audit events with Phase 4 — this view lights up automatically."
+                  />
+                )}
               </div>
             }
           />

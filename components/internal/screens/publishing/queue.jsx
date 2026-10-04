@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { publicEntryPath } from "@/lib/delivery/core.mjs";
 import { toast } from "sonner";
-import { ExternalLink, ListChecks, Rocket, Undo2 } from "lucide-react";
+import { ExternalLink, ListChecks, Rocket, Undo2, X } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import {
@@ -18,7 +19,8 @@ import {
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { Button } from "@geiger/ui/button";
 import { ActionMenu } from "@geiger/ui/action-menu";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
 import {
@@ -31,9 +33,7 @@ import { publishEntry, unpublishEntry } from "@/lib/supabase/publishing";
 import { getUser } from "@/lib/supabase/user";
 import { useProject } from "@/context/project-context";
 
-// Entries awaiting (or holding) a live slot: Scheduled, In review, and
-// Published rows that can be pulled back. Publish/Unpublish flip status via
-// the app-layer pipeline (status update + version snapshot + webhooks).
+// Scheduled, in-review and published entries; publish/unpublish run the app-layer pipeline.
 const QUEUE_STATUSES = ["Scheduled", "In review", "Published"];
 
 export function PublishingQueueScreen() {
@@ -124,9 +124,10 @@ export function PublishingQueueScreen() {
   };
 
   const handleViewPage = (entry) => {
-    if (typeof window !== "undefined") {
+    const path = publicEntryPath(entry, process.env.NEXT_PUBLIC_BASE_PATH || "");
+    if (path && typeof window !== "undefined") {
       window.open(
-        `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/c/${entry.id}`,
+        path,
         "_blank",
         "noopener,noreferrer",
       );
@@ -138,9 +139,9 @@ export function PublishingQueueScreen() {
       key: "title",
       header: "Entry",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.title}</span>
-          <span className="text-xs text-text-secondary">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="max-w-sm whitespace-normal break-words font-medium text-foreground">{r.title || "Untitled"}</span>
+          <span className="max-w-sm whitespace-normal break-words text-xs text-text-secondary">
             /{r.slug} · {r.type}
             {r.scheduledAt ? ` · goes live ${formatDate(r.scheduledAt)}` : ""}
           </span>
@@ -154,9 +155,9 @@ export function PublishingQueueScreen() {
     },
     {
       key: "scheduled",
-      header: "Scheduled",
+      header: "Date",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span className="whitespace-nowrap text-sm text-text-secondary">
           {formatDate(r.scheduledAt || r.publishedAt || r.updatedAt) || "—"}
         </span>
       ),
@@ -177,7 +178,9 @@ export function PublishingQueueScreen() {
               ...(r.status === "Published"
                 ? [{ icon: Undo2, label: "Unpublish", onSelect: () => handleUnpublish(r) }]
                 : []),
-              { icon: ExternalLink, label: "View page", onSelect: () => handleViewPage(r) },
+              ...(publicEntryPath(r)
+                ? [{ icon: ExternalLink, label: "View page", onSelect: () => handleViewPage(r) }]
+                : []),
             ]}
           />
         </div>
@@ -195,7 +198,7 @@ export function PublishingQueueScreen() {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <FilterDropdown
             value={status}
             onValueChange={setStatus}
@@ -227,6 +230,19 @@ export function PublishingQueueScreen() {
                     rows.length
                       ? "Try clearing the search or filters."
                       : "Nothing is scheduled or in review. Drafts appear here once they are submitted or scheduled."
+                  }
+                  action={
+                    rows.length ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSearch("");
+                          setStatus("all");
+                        }}
+                      >
+                        <X className="h-4 w-4" /> Clear filters
+                      </Button>
+                    ) : undefined
                   }
                 />
               </div>

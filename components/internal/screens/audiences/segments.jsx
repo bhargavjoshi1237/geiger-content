@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Filter, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, Filter, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
@@ -14,8 +14,9 @@ import {
   StatsBar,
   Toolbar,
   Field,
+  RollingNumber,
   SectionCard,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import { Input } from "@geiger/ui/input";
@@ -35,6 +36,7 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import { ActionMenu } from "@geiger/ui/action-menu";
+import { LogoLoading } from "@geiger/ui/logo-loading";
 import { SEGMENT_OPERATORS, formatDate, newId } from "./constants";
 import {
   EMPTY_RULE,
@@ -87,11 +89,11 @@ function RuleBuilder({ rule, onChange, fieldHints }) {
 
   return (
     <div className="grid gap-3">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-text-secondary">Match</span>
         <Select value={rule.op || "and"} onValueChange={setOp}>
           <SelectTrigger className="w-28">
-            <SelectValue />
+            <SelectValue/>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="and">ALL</SelectItem>
@@ -101,22 +103,26 @@ function RuleBuilder({ rule, onChange, fieldHints }) {
         <span className="text-sm text-text-secondary">of these rules</span>
       </div>
       {(rule.conditions || []).map((c, i) => (
-        <div key={i} className="grid gap-2 rounded-xl border border-border bg-surface-card p-3 md:grid-cols-[1fr_160px_1fr_auto]">
-          <Field label={i === 0 ? "Field" : ""}>
+        <div
+          key={i}
+          className="grid min-w-0 gap-3 rounded-xl border border-border bg-surface-card p-3 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_160px_minmax(0,1fr)_auto]"
+        >
+          <Field label="Field" htmlFor={`segment-field-${i}`} className="min-w-0">
             <Input
+              id={`segment-field-${i}`}
               value={c.field || ""}
               onChange={(e) => setCondition(i, { field: e.target.value })}
               placeholder="trait.plan or events.page_view"
               list="segment-field-hints"
             />
           </Field>
-          <Field label={i === 0 ? "Operator" : ""}>
+          <Field label="Operator" htmlFor={`segment-operator-${i}`} className="min-w-0">
             <Select
               value={c.operator || "equals"}
               onValueChange={(v) => setCondition(i, { operator: v })}
             >
-              <SelectTrigger>
-                <SelectValue />
+              <SelectTrigger id={`segment-operator-${i}`}>
+                <SelectValue/>
               </SelectTrigger>
               <SelectContent>
                 {SEGMENT_OPERATORS.map((op) => (
@@ -127,17 +133,20 @@ function RuleBuilder({ rule, onChange, fieldHints }) {
               </SelectContent>
             </Select>
           </Field>
-          <Field label={i === 0 ? "Value" : ""}>
+          <Field label="Value" htmlFor={`segment-value-${i}`} className="min-w-0">
             <Input
+              id={`segment-value-${i}`}
               value={stringifyValue(c.value)}
               onChange={(e) => setCondition(i, { value: parseValue(e.target.value) })}
               placeholder="pro, 5, true…"
               disabled={c.operator === "exists" || c.operator === "not_exists"}
             />
           </Field>
-          <div className="flex items-end pb-0.5">
+          <div className="flex items-end justify-end">
             <Button
               variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-foreground"
               aria-label={`Remove rule ${i + 1}`}
               onClick={() => removeCondition(i)}
             >
@@ -308,13 +317,32 @@ export function SegmentsScreen() {
       key: "name",
       header: "Segment",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-sm">
+          <span className="truncate font-medium text-foreground">{r.name}</span>
           <span className="text-xs text-text-secondary">
             {(r.rule?.conditions || []).length} rules · {r.rule?.op || "and"}
             {r.updatedAt ? ` · ${formatDate(r.updatedAt)}` : ""}
           </span>
         </div>
+      ),
+    },
+    {
+      key: "match",
+      header: "Match",
+      render: (r) => (
+        <Badge variant={r.rule?.op === "or" ? "purple" : "info"}>
+          {r.rule?.op === "or" ? "Any rule" : "All rules"}
+        </Badge>
+      ),
+    },
+    {
+      key: "rules",
+      header: "Rules",
+      align: "right",
+      render: (r) => (
+        <span className="text-sm tabular-nums text-text-secondary">
+          {(r.rule?.conditions || []).length}
+        </span>
       ),
     },
     {
@@ -352,7 +380,7 @@ export function SegmentsScreen() {
             </Button>
           }
         />
-        <StatsBar stats={stats} />
+        <StatsBar stats={stats} columns={3} />
         <div className="grid gap-4 lg:grid-cols-3">
           <SectionCard
             title="Rules"
@@ -364,30 +392,40 @@ export function SegmentsScreen() {
               onChange={setDraftRule}
               fieldHints={fieldHints}
             />
-            <div className="mt-4">
+            <div className="mt-5 flex justify-end border-t border-border pt-4">
               <Button
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={handleSaveRules}
                 disabled={saving}
               >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {saving ? "Saving…" : "Save rules"}
               </Button>
             </div>
           </SectionCard>
           <SectionCard title="Member preview" description="Live match count.">
-            <p className="text-4xl font-semibold tabular-nums text-foreground">
-              {scopeLoading || previewCount === null ? "…" : previewCount}
-            </p>
-            <p className="mt-1 text-sm text-text-secondary">
-              of {contexts.length} profiles match
-              {draftRule?.op === "or" ? " any" : " all"} of{" "}
-              {(draftRule?.conditions || []).length} rules.
-            </p>
-            {(draftRule?.conditions || []).length === 0 ? (
-              <div className="mt-3">
-                <Badge variant="neutral">Empty rule matches everyone</Badge>
+            {scopeLoading || previewCount === null ? (
+              <div className="flex items-center justify-center py-8">
+                <LogoLoading size={44} aria-label="Loading members" />
               </div>
-            ) : null}
+            ) : (
+              <>
+                <RollingNumber
+                  value={String(previewCount)}
+                  className="text-4xl font-bold leading-none text-foreground"
+                />
+                <p className="mt-2 text-sm text-text-secondary">
+                  of {contexts.length} profiles match
+                  {draftRule?.op === "or" ? " any" : " all"} of{" "}
+                  {(draftRule?.conditions || []).length} rules.
+                </p>
+                {(draftRule?.conditions || []).length === 0 ? (
+                  <div className="mt-3">
+                    <Badge variant="neutral">Empty rule matches everyone</Badge>
+                  </div>
+                ) : null}
+              </>
+            )}
           </SectionCard>
         </div>
       </MainScreenWrapper>
@@ -409,10 +447,9 @@ export function SegmentsScreen() {
         }
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       <Toolbar>
-        <div />
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -453,7 +490,7 @@ export function SegmentsScreen() {
       )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-xl bg-background">
+        <DialogContent className="max-h-[85vh] w-[calc(100%-2rem)] overflow-y-auto bg-background sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create segment</DialogTitle>
             <DialogDescription>
@@ -479,8 +516,7 @@ export function SegmentsScreen() {
           </div>
           <DialogFooter>
             <Button
-              variant="outline"
-              className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+              variant="ghost"
               onClick={() => setCreateOpen(false)}
             >
               Cancel
@@ -499,7 +535,7 @@ export function SegmentsScreen() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete segment</DialogTitle>
             <DialogDescription>
@@ -515,7 +551,7 @@ export function SegmentsScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

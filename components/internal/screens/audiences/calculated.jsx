@@ -12,7 +12,7 @@ import {
   SearchInput,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { formatDate } from "./constants";
 import { listEvents } from "@/lib/supabase/events";
 import { listProfiles } from "@/lib/supabase/profiles";
@@ -87,7 +87,7 @@ export function CalculatedScreen() {
       key: "profile",
       header: "Profile",
       render: (d) => (
-        <span className="font-medium text-foreground">
+        <span className="block max-w-[16rem] truncate font-medium text-foreground sm:max-w-sm">
           {d.profile.primaryIdentifier || "—"}
         </span>
       ),
@@ -124,7 +124,7 @@ export function CalculatedScreen() {
       header: "Last active",
       align: "right",
       render: (d) => (
-        <span className="text-sm text-text-secondary">
+        <span className="whitespace-nowrap text-sm text-text-secondary">
           {formatDate(d.last) || "—"}
         </span>
       ),
@@ -141,7 +141,6 @@ export function CalculatedScreen() {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <div />
         <SearchInput
           value={search}
           onChange={setSearch}

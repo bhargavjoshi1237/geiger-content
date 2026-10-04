@@ -12,7 +12,7 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import {
@@ -37,7 +37,7 @@ import { diffPayloads } from "./constants";
 
 const DIFF_KIND_MAP = {
   added: { label: "Added", variant: "success" },
-  removed: { label: "Removed", variant: "destructive" },
+  removed: { label: "Removed", variant: "danger" },
   changed: { label: "Changed", variant: "info" },
 };
 
@@ -167,7 +167,7 @@ export function CompareScreen() {
       key: "before",
       header: left ? `v${left.version}` : "Before",
       render: (r) => (
-        <span className="max-w-56 truncate font-mono text-xs text-text-secondary">
+        <span className="block max-w-56 truncate font-mono text-xs text-text-secondary" title={r.before}>
           {r.before}
         </span>
       ),
@@ -176,7 +176,7 @@ export function CompareScreen() {
       key: "after",
       header: right ? `v${right.version}` : "After",
       render: (r) => (
-        <span className="max-w-56 truncate font-mono text-xs text-text-secondary">
+        <span className="block max-w-56 truncate font-mono text-xs text-text-secondary" title={r.after}>
           {r.after}
         </span>
       ),
@@ -192,9 +192,9 @@ export function CompareScreen() {
         title="Compare & Rollback"
         description="Diff two snapshots, then restore the older one onto the live entry."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
             <Select value={entryId} onValueChange={pickVersions}>
-              <SelectTrigger className="w-56">
+              <SelectTrigger className="w-full min-w-0 sm:w-56" aria-label="Entry to compare">
                 <SelectValue placeholder="Select an entry" />
               </SelectTrigger>
               <SelectContent>
@@ -237,13 +237,13 @@ export function CompareScreen() {
         </div>
       ) : (
         <div className="space-y-5">
-          <SectionCard
+          <SectionCard bare
             title="Versions"
             description="Left is the baseline; rollback restores it."
             action={
-              <div className="flex items-center gap-2">
+              <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                 <Select value={leftId} onValueChange={setLeftId}>
-                  <SelectTrigger className="w-44">
+                  <SelectTrigger className="w-full min-w-0 sm:w-44" aria-label="Baseline version">
                     <SelectValue placeholder="Baseline" />
                   </SelectTrigger>
                   <SelectContent>
@@ -254,9 +254,9 @@ export function CompareScreen() {
                     ))}
                   </SelectContent>
                 </Select>
-                <span className="text-xs text-text-secondary">→</span>
+                <span className="hidden text-xs text-text-secondary sm:inline" aria-hidden="true">→</span>
                 <Select value={rightId} onValueChange={setRightId}>
-                  <SelectTrigger className="w-44">
+                  <SelectTrigger className="w-full min-w-0 sm:w-44" aria-label="Comparison version">
                     <SelectValue placeholder="Compare to" />
                   </SelectTrigger>
                   <SelectContent>
@@ -286,7 +286,7 @@ export function CompareScreen() {
         </div>
       )}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] overflow-y-auto p-4 sm:p-6 sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Restore v{left?.version}?</DialogTitle>
             <DialogDescription>

@@ -11,7 +11,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@geiger/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { cn } from "@geiger/ui/lib/utils";
 
 // One pagination footer for every list in the app: page size on the left,
 // page controls on the right. Kept self-contained so it can move to @geiger/ui

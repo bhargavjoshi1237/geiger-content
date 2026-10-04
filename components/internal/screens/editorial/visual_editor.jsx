@@ -10,8 +10,9 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Badge } from "@geiger/ui/badge";
+import { Button } from "@geiger/ui/button";
 import {
   Select,
   SelectContent,
@@ -82,9 +83,9 @@ export function VisualEditorScreen() {
         title="Visual Editor"
         description="Preview a published entry the way readers see it."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
             <Select value={entryId} onValueChange={setEntryId}>
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-full min-w-0 sm:w-64" aria-label="Published entry">
                 <SelectValue placeholder="Select a published entry" />
               </SelectTrigger>
               <SelectContent>
@@ -101,20 +102,18 @@ export function VisualEditorScreen() {
               className="flex items-center gap-1 rounded-lg border border-border bg-surface-subtle p-1"
             >
               {DEVICES.map((d) => (
-                <button
+                <Button
                   key={d.key}
                   type="button"
+                  variant={device === d.key ? "default" : "ghost"}
+                  size="icon-sm"
                   aria-label={`${d.label} preview`}
                   aria-pressed={device === d.key}
                   onClick={() => setDevice(d.key)}
-                  className={`rounded-md p-2 ${
-                    device === d.key
-                      ? "bg-primary text-primary-foreground"
-                      : "text-text-secondary hover:bg-surface-hover hover:text-foreground"
-                  }`}
+                  className={device === d.key ? undefined : "text-text-secondary"}
                 >
                   <d.icon className="h-4 w-4" />
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -141,7 +140,7 @@ export function VisualEditorScreen() {
                 {selected.status}
               </Badge>
             }
-            className="w-full transition-all"
+            className="w-full"
           >
             <div className="mx-auto w-full" style={{ maxWidth: activeDevice.width }}>
               {selected.coverUrl ? (

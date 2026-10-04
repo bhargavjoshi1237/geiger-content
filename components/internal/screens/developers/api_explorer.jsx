@@ -2,17 +2,18 @@
 
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { FlaskConical, Play, RotateCcw } from "lucide-react";
+import { FlaskConical, Loader2, Play, RotateCcw } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
-import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   EmptyState,
   Field,
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { LoadingArea } from "@geiger/ui";
+import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Textarea } from "@geiger/ui/textarea";
@@ -24,10 +25,9 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import { useProject } from "@/context/project-context";
+import { CodeBlock } from "./code_block";
 
-// Query builder over the delivery REST endpoints with a live response viewer.
-// Endpoints marked "planned" belong to Phase 2 — firing them before the route
-// lands surfaces the 404 in the viewer instead of crashing.
+// Delivery API request builder; unshipped (Phase 2) routes surface their 404 in the viewer instead of crashing.
 const ENDPOINTS = [
   {
     key: "list",
@@ -119,6 +119,17 @@ export function ApiExplorerScreen() {
     }
   };
 
+  const copyResponse = async () => {
+    if (!result) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(result.body, null, 2));
+      toast.success("Response copied to clipboard.");
+    } catch (e) {
+      console.error("[api-explorer.copy]", e);
+      toast.error("Couldn't copy to clipboard.");
+    }
+  };
+
   const stats = useMemo(
     () => [
       { label: "Endpoints", value: String(ENDPOINTS.length), footer: "v1 delivery surface" },
@@ -160,20 +171,29 @@ export function ApiExplorerScreen() {
               onClick={send}
               disabled={sending}
             >
-              <Play className="h-4 w-4" /> {sending ? "Sending…" : "Send"}
+              {sending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              {sending ? "Sending…" : "Send"}
             </Button>
           </>
         }
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <SectionCard title="Request" description="Pick an endpoint, fill its inputs, send.">
+        <SectionCard
+
+          title="Request"
+          description="Pick an endpoint, fill its inputs, send."
+        >
           <div className="grid gap-4">
-            <Field label="Endpoint">
+            <Field label="Endpoint" htmlFor="explorer-endpoint">
               <Select value={endpointKey} onValueChange={setEndpointKey}>
-                <SelectTrigger>
+                <SelectTrigger id="explorer-endpoint">
                   <SelectValue placeholder="Select endpoint" />
                 </SelectTrigger>
                 <SelectContent>
@@ -186,8 +206,9 @@ export function ApiExplorerScreen() {
               </Select>
             </Field>
             {endpoint.params.includes("slug") ? (
-              <Field label="Slug">
+              <Field label="Slug" htmlFor="explorer-slug">
                 <Input
+                  id="explorer-slug"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder="hello-world"
@@ -195,8 +216,9 @@ export function ApiExplorerScreen() {
               </Field>
             ) : null}
             {endpoint.params.includes("limit") ? (
-              <Field label="Limit">
+              <Field label="Limit" htmlFor="explorer-limit">
                 <Input
+                  id="explorer-limit"
                   value={limit}
                   onChange={(e) => setLimit(e.target.value)}
                   placeholder="25"
@@ -205,8 +227,9 @@ export function ApiExplorerScreen() {
               </Field>
             ) : null}
             {endpoint.params.includes("query") ? (
-              <Field label="Query">
+              <Field label="Query" htmlFor="explorer-query">
                 <Textarea
+                  id="explorer-query"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   rows={4}
@@ -214,24 +237,30 @@ export function ApiExplorerScreen() {
                 />
               </Field>
             ) : null}
-            <p className="break-all rounded-lg border border-border bg-surface-subtle px-3 py-2 font-mono text-xs text-text-secondary">
-              {endpoint.method} {previewUrl}
-            </p>
+            <Field label="Request URL">
+              <CodeBlock wrap code={`${endpoint.method} ${previewUrl}`} />
+            </Field>
           </div>
         </SectionCard>
 
         <SectionCard
+
           title="Response"
           description={
             result
-              ? `${result.status} · ${result.ms} ms`
+              ? "Live JSON from the last request."
               : "Responses appear here after you send a request."
+          }
+          action={
+            result && !sending ? (
+              <Badge variant={result.ok ? "success" : "danger"}>
+                {result.status} · {result.ms} ms
+              </Badge>
+            ) : null
           }
         >
           {sending ? (
-            <TableSkeleton
-              columns={[{ key: "response", header: "Response" }]}
-            />
+            <LoadingArea size={40} label="Sending request" />
           ) : !result ? (
             <EmptyState
               icon={FlaskConical}
@@ -239,9 +268,12 @@ export function ApiExplorerScreen() {
               description="Configure a request on the left and press Send."
             />
           ) : (
-            <pre className="max-h-96 overflow-auto rounded-lg border border-border bg-surface-subtle p-3 font-mono text-xs text-foreground">
-              {JSON.stringify(result.body, null, 2)}
-            </pre>
+            <CodeBlock
+              code={JSON.stringify(result.body, null, 2)}
+              onCopy={copyResponse}
+              copyLabel="Copy response"
+              preClassName="max-h-96"
+            />
           )}
         </SectionCard>
       </div>

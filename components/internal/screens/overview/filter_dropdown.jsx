@@ -10,7 +10,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@geiger/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { cn } from "@geiger/ui/lib/utils";
 
 const defaultOptions = [
   { value: "1d", label: "Last 1 day" },

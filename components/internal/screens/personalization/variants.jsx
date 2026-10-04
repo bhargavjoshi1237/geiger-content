@@ -2,20 +2,19 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Copy, Pencil, Plus, Split, Trash2 } from "lucide-react";
+import { Copy, Pause, Play, Plus, Split, Trash2 } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
 import {
   DataTable,
-  EmptyState,
   Field,
   ScreenHeader,
   SearchInput,
   StatsBar,
   StatusPill,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -44,12 +43,7 @@ import {
 import { listSlots } from "@/lib/supabase/slots";
 import { listContent } from "@/lib/supabase/content";
 import { useProject } from "@/context/project-context";
-
-const VARIANT_STATUS_MAP = {
-  Active: { label: "Active", variant: "success", dotClass: "bg-emerald-400" },
-  Paused: { label: "Paused", variant: "neutral", dotClass: "bg-[#737373]" },
-  Archived: { label: "Archived", variant: "outline", dotClass: "bg-[#525252]" },
-};
+import { EmptyPanel, VARIANT_STATUS_MAP } from "./personalization_kit";
 
 const STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All Statuses" },
@@ -81,7 +75,7 @@ function CreateVariantDialog({ open, onOpenChange, slots, entries, onCreate }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[85vh] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Create variant</DialogTitle>
           <DialogDescription>
@@ -109,7 +103,7 @@ function CreateVariantDialog({ open, onOpenChange, slots, entries, onCreate }) {
               </SelectContent>
             </Select>
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Priority" hint="Higher wins first">
               <Input type="number" value={priority} onChange={(e) => setPriority(e.target.value)} />
             </Field>
@@ -229,9 +223,9 @@ export function VariantsScreen() {
     {
       key: "variant", header: "Variant",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{entryTitle(r.entryId)}</span>
-          <span className="text-xs text-text-secondary">slot: {slotName(r.slotId)} · priority {r.priority} · weight {r.weight}</span>
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-sm">
+          <span className="truncate font-medium text-foreground">{entryTitle(r.entryId)}</span>
+          <span className="text-xs text-text-secondary tabular-nums">slot: {slotName(r.slotId)} · priority {r.priority} · weight {r.weight}</span>
         </div>
       ),
     },
@@ -245,7 +239,7 @@ export function VariantsScreen() {
         <ActionMenu
           label="Variant actions"
           items={[
-            { icon: Pencil, label: r.status === "Active" ? "Pause" : "Activate", onSelect: () => toggleStatus(r) },
+            { icon: r.status === "Active" ? Pause : Play, label: r.status === "Active" ? "Pause" : "Activate", onSelect: () => toggleStatus(r) },
             { icon: Copy, label: "Duplicate", onSelect: () => handleDuplicate(r) },
             { separator: true },
             { icon: Trash2, label: "Delete", variant: "destructive", onSelect: () => handleDelete(r) },
@@ -279,15 +273,17 @@ export function VariantsScreen() {
           data={filtered}
           getRowKey={(r) => r.id}
           empty={
-            <EmptyState
+            <EmptyPanel
               icon={Split}
               title={rows.length ? "No variants match your filters" : "No variants yet"}
               description={rows.length ? "Try clearing the search or filters." : "Create your first variant to give a slot a choice of content."}
-              action={
+              action={rows.length ? (
+                <Button variant="ghost" onClick={() => { setSearch(""); setStatus("all"); }}>Clear filters</Button>
+              ) : (
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setCreateOpen(true)}>
                   <Plus className="h-4 w-4" /> Create variant
                 </Button>
-              }
+              )}
             />
           }
         />

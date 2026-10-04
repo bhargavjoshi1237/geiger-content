@@ -15,9 +15,10 @@ import {
   SearchInput,
   SectionCard,
   StatsBar,
+  StatusPill,
   Toolbar,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import {
@@ -28,6 +29,7 @@ import {
   SelectValue,
 } from "@geiger/ui/select";
 import FilterDropdown from "@/components/internal/screens/overview/filter_dropdown";
+import { PERMISSION_RESULT_MAP } from "./constants";
 import { WORKSPACE_PERMISSIONS } from "@/lib/rbac";
 import { evaluatePermission } from "@/lib/supabase/rbac";
 import { getUser } from "@/lib/supabase/user";
@@ -93,8 +95,7 @@ export function PermissionsScreen() {
       return;
     }
     setTesting(true);
-    // Read-only RPC: evaluates the user's grants against one capability and
-    // returns the winning grant path. Nothing is written.
+    // Read-only RPC: returns the winning grant path; nothing is written.
     const outcome = await evaluatePermission(
       projectId,
       testUserId.trim(),
@@ -109,7 +110,9 @@ export function PermissionsScreen() {
       key: "key",
       header: "Permission key",
       render: (p) => (
-        <span className="font-mono text-sm text-foreground">{p.key}</span>
+        <span className="whitespace-nowrap font-mono text-sm text-foreground">
+          {p.key}
+        </span>
       ),
     },
     {
@@ -123,7 +126,9 @@ export function PermissionsScreen() {
       key: "group",
       header: "Group",
       render: (p) => (
-        <span className="text-sm text-text-secondary">{p.group}</span>
+        <span className="whitespace-nowrap text-sm text-text-secondary">
+          {p.group}
+        </span>
       ),
     },
   ];
@@ -141,9 +146,10 @@ export function PermissionsScreen() {
         title="Permission tester"
         description="Evaluate one user's grants against one capability via the database. Read-only — nothing is granted or changed."
       >
-        <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
-          <Field label="User id">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <Field label="User id" htmlFor="permission-test-user">
             <Input
+              id="permission-test-user"
               value={testUserId}
               onChange={(e) => {
                 setTestUserId(e.target.value);
@@ -152,7 +158,7 @@ export function PermissionsScreen() {
               placeholder="UUID of the user to test"
             />
           </Field>
-          <Field label="Permission">
+          <Field label="Permission" htmlFor="permission-test-key">
             <Select
               value={testKey}
               onValueChange={(v) => {
@@ -160,7 +166,7 @@ export function PermissionsScreen() {
                 setResult(null);
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="permission-test-key" className="w-full min-w-0 [&_[data-slot=select-value]]:truncate">
                 <SelectValue placeholder="Select a permission key" />
               </SelectTrigger>
               <SelectContent>
@@ -174,7 +180,7 @@ export function PermissionsScreen() {
           </Field>
           <div className="flex items-end">
             <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              className="w-full lg:w-auto"
               onClick={runTest}
               disabled={testing || !projectId || !testUserId.trim() || !testKey}
             >
@@ -184,18 +190,28 @@ export function PermissionsScreen() {
           </div>
         </div>
         {result ? (
-          <div className="mt-4 rounded-lg border border-border bg-surface-subtle p-3 text-sm">
-            <p className="font-medium text-foreground">
-              {result.allowed ? "Allowed" : "Denied"}
-              {result.roleName ? ` — via ${result.roleName}` : ""}
-            </p>
+          <div className="mt-4 space-y-2 rounded-lg border border-border bg-surface-card p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill
+                status={result.allowed ? "allowed" : "denied"}
+                map={PERMISSION_RESULT_MAP}
+              />
+              <span className="break-all font-mono text-xs text-text-secondary">
+                {testKey}
+              </span>
+              {result.roleName ? (
+                <span className="text-sm text-foreground">
+                  via {result.roleName}
+                </span>
+              ) : null}
+            </div>
             {result.patterns?.length ? (
-              <p className="mt-1 font-mono text-xs text-text-secondary">
+              <p className="break-all font-mono text-xs text-text-secondary">
                 matched: {result.patterns.join(", ")}
               </p>
             ) : null}
             {result.scope && Object.keys(result.scope).length > 0 ? (
-              <p className="mt-1 font-mono text-xs text-text-secondary">
+              <p className="break-all font-mono text-xs text-text-secondary">
                 scope: {JSON.stringify(result.scope)}
               </p>
             ) : null}
@@ -204,7 +220,7 @@ export function PermissionsScreen() {
       </SectionCard>
 
       <Toolbar>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <FilterDropdown
             value={group}
             onValueChange={setGroup}
@@ -229,7 +245,18 @@ export function PermissionsScreen() {
               <EmptyState
                 icon={LockKeyhole}
                 title="No permissions match your filters"
-                description="Try clearing the search or picking a different group."
+                description="Try a different search or group."
+                action={
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearch("");
+                      setGroup("all");
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                }
               />
             </div>
           }

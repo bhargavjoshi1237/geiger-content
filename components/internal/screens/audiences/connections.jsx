@@ -19,7 +19,7 @@ import {
   StatusPill,
   Toolbar,
   Field,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Badge } from "@geiger/ui/badge";
 import { Input } from "@geiger/ui/input";
@@ -78,7 +78,7 @@ function CreateConnectionDialog({ open, onOpenChange, onCreate }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background">
+      <DialogContent className="max-h-[85vh] w-[calc(100%-2rem)] overflow-y-auto bg-background sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create connection</DialogTitle>
           <DialogDescription>
@@ -105,7 +105,7 @@ function CreateConnectionDialog({ open, onOpenChange, onCreate }) {
           <Field label="Type">
             <Select value={connType} onValueChange={setConnType}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue/>
               </SelectTrigger>
               <SelectContent>
                 {CONNECTION_TYPES.map((t) => (
@@ -119,8 +119,7 @@ function CreateConnectionDialog({ open, onOpenChange, onCreate }) {
         </div>
         <DialogFooter>
           <Button
-            variant="outline"
-            className="border-border bg-transparent text-muted-foreground hover:bg-surface-active hover:text-foreground"
+            variant="ghost"
             onClick={() => onOpenChange(false)}
           >
             Cancel
@@ -235,8 +234,8 @@ export function ConnectionsScreen() {
       key: "name",
       header: "Connection",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-sm">
+          <span className="truncate font-medium text-foreground" title={r.name}>{r.name}</span>
           <span className="text-xs text-text-secondary">
             {CONNECTION_TYPE_MAP[r.type]?.label || r.type}
             {r.updatedAt ? ` · ${formatDate(r.updatedAt)}` : ""}
@@ -303,7 +302,7 @@ export function ConnectionsScreen() {
       <StatsBar stats={stats} />
 
       <Toolbar>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <FilterDropdown
             value={status}
             onValueChange={setStatus}
@@ -366,12 +365,12 @@ export function ConnectionsScreen() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete connection</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete{" "}
-              <span className="font-medium text-foreground">
+              <span className="break-all font-medium text-foreground">
                 {deleteTarget?.name}
               </span>
               ? Its sync history stops here.
@@ -382,7 +381,7 @@ export function ConnectionsScreen() {
               Cancel
             </Button>
             <Button
-              className="bg-red-500/90 text-white hover:bg-red-500"
+              variant="destructive"
               onClick={() => handleDelete(deleteTarget)}
             >
               <Trash2 className="h-4 w-4" /> Delete

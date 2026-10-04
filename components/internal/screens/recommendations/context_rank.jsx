@@ -11,14 +11,14 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
+import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Textarea } from "@geiger/ui/textarea";
 import { decideOverVariants, rulesMatch } from "@/lib/supabase/decide";
+import { EMPTY_PANEL_CLASS } from "./constants";
 
-// Context-aware Ranking: offline demo of context matching. Paste variant
-// rules as JSON plus a context bag — see which variants match and why.
-// Live decisions run through Edge Decisions (/api/decide).
+// Context-aware Ranking: offline matcher demo over pasted variant rules + context JSON; live decisions run via /api/decide.
 export function ContextRankScreen() {
   const [rulesJson, setRulesJson] = useState('[\n  { "id": "a", "entryId": "entry-morning", "priority": 1, "weight": 1, "status": "Active", "rules": [{ "field": "device", "op": "equals", "value": "mobile" }] },\n  { "id": "b", "entryId": "entry-default", "priority": 0, "weight": 1, "status": "Active", "rules": [] }\n]');
   const [contextJson, setContextJson] = useState('{\n  "device": "mobile",\n  "locale": "en"\n}');
@@ -56,14 +56,19 @@ export function ContextRankScreen() {
     {
       key: "variant", header: "Variant",
       render: (r) => (
-        <span className="font-medium text-foreground">
-          {String(r.variant.id)} {r.matched ? "· matches" : "· no match"}
-        </span>
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-lg">
+          <span className="truncate font-mono text-sm font-medium text-foreground">{String(r.variant.id)}</span>
+          {r.variant.entryId ? <span className="truncate text-xs text-text-secondary">{String(r.variant.entryId)}</span> : null}
+        </div>
       ),
     },
     {
-      key: "clauses", header: "Clauses",
-      render: (r) => <span className="text-sm text-text-secondary">{r.clauses} checked</span>,
+      key: "match", header: "Context",
+      render: (r) => <Badge variant={r.matched ? "success" : "neutral"}>{r.matched ? "Matches" : "No match"}</Badge>,
+    },
+    {
+      key: "clauses", header: "Clauses", align: "right",
+      render: (r) => <span className="text-sm tabular-nums text-text-secondary">{r.clauses}</span>,
     },
   ];
 
@@ -74,8 +79,8 @@ export function ContextRankScreen() {
         description="Demo how request context (device, locale, time) re-orders variants — offline, no traffic needed."
         actions={<Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={run}><Route className="h-4 w-4" /> Run</Button>}
       />
-      <StatsBar stats={stats} />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <StatsBar stats={stats} columns={3} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SectionCard title="Input" description="Variant list and context bag as JSON. Same matcher as the live engine.">
           <div className="grid gap-4">
             <Field label="Variants (JSON)">
@@ -85,24 +90,24 @@ export function ContextRankScreen() {
               <Textarea value={contextJson} onChange={(e) => setContextJson(e.target.value)} rows={4} className="font-mono text-xs" />
             </Field>
             {error && <p className="text-sm text-red-400">{error}</p>}
-            <p className="text-xs text-text-secondary">Try: change device to desktop and re-run — the mobile variant should drop out.</p>
+            <p className="text-xs text-text-tertiary">Try: change device to desktop and re-run — the mobile variant should drop out.</p>
           </div>
         </SectionCard>
-        <SectionCard title="Outcome" description="Match table plus the winner and its reason.">
+        <SectionCard bare title="Outcome" description="Match table plus the winner and its reason.">
           {!parsed ? (
-            <p className="text-sm text-text-secondary">Press Run to evaluate.</p>
+            <EmptyState icon={Route} title="Not evaluated yet" description="Press Run to match the variants against the context." className="py-10" />
           ) : (
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               <DataTable
                 columns={columns}
                 data={rows}
                 getRowKey={(r) => String(r.variant.id)}
-                empty={<EmptyState icon={Route} title="No variants" description="Paste a variant list first." />}
+                empty={<EmptyState icon={Route} title="No variants" description="Paste a variant list first." className={EMPTY_PANEL_CLASS} />}
               />
               {decision && (
-                <div className="rounded-lg border border-border bg-surface-card p-3">
-                  <p className="text-xs text-text-secondary">Reason</p>
-                  <p className="text-sm text-foreground">{decision.reason}</p>
+                <div className="rounded-lg border border-border bg-surface-card p-4">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">Reason</p>
+                  <p className="mt-1 break-words text-sm text-foreground">{decision.reason}</p>
                 </div>
               )}
             </div>

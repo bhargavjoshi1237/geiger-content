@@ -5,7 +5,7 @@ import { RefreshCw, Database } from "lucide-react";
 import { Button } from "@geiger/ui/button";
 import { LogoLoading } from "@geiger/ui/logo-loading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@geiger/ui/select";
-import { DataTable, EmptyState, ScreenHeader, SearchInput } from "@/components/internal/shared/screen_kit";
+import { DataTable, EmptyState, ScreenHeader, SearchInput } from "@geiger/ui/screen-kit";
 import { SecondaryScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { useRbac } from "@/context/rbac-context";
 import { useProject } from "@/context/project-context";
@@ -46,6 +46,6 @@ export function OperationTable({ rows, columns, title = "No records yet", descri
 
 export const displayTime = (value) => value ? new Date(value).toLocaleString() : "—";
 
-export function OperationSelect({ value, onChange, options, placeholder = "Choose…", disabled = false }) {
-  return <Select value={value || undefined} onValueChange={onChange} disabled={disabled}><SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger><SelectContent>{options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select>;
+export function OperationSelect({ value, onChange, options, placeholder = "Choose…", disabled = false, ...triggerProps }) {
+  return <Select value={value || undefined} onValueChange={onChange} disabled={disabled}><SelectTrigger {...triggerProps}><SelectValue placeholder={placeholder} /></SelectTrigger><SelectContent>{options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select>;
 }

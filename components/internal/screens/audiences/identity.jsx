@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Merge } from "lucide-react";
+import { Loader2, Merge, ScanSearch } from "lucide-react";
 
 import { MainScreenWrapper } from "@/components/internal/shared/screen_wrappers";
 import { TableSkeleton } from "@/components/internal/shared/table_skeleton";
@@ -15,8 +15,9 @@ import {
   Toolbar,
   Field,
   SectionCard,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
+import { Badge } from "@geiger/ui/badge";
 import { Input } from "@geiger/ui/input";
 import { formatDate, isAnonymousProfile } from "./constants";
 import { getTraitsMap, listProfiles, mergeProfiles } from "@/lib/supabase/profiles";
@@ -128,8 +129,8 @@ export function IdentityScreen() {
       key: "identifier",
       header: "Resolved identity",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-xs">
+          <span className="truncate font-medium text-foreground">
             {r.primaryIdentifier || "—"}
           </span>
           <span className="text-xs text-text-secondary">
@@ -143,7 +144,7 @@ export function IdentityScreen() {
       key: "aliases",
       header: "Merged aliases",
       render: (r) => (
-        <span className="text-sm text-text-secondary">
+        <span className="block max-w-[16rem] truncate text-sm text-text-secondary sm:max-w-md">
           {(r.identifiers || [])
             .filter((a) => a !== r.primaryIdentifier)
             .join(", ") || "—"}
@@ -159,7 +160,7 @@ export function IdentityScreen() {
         description="Merge anonymous visitors into known profiles on login. Aliases, traits and events carry over to the survivor."
       />
 
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} columns={3} />
 
       <SectionCard
         title="Merge tool"
@@ -185,35 +186,48 @@ export function IdentityScreen() {
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant="outline" onClick={handlePreview}>
-            Preview
+            <ScanSearch className="h-4 w-4" /> Preview
           </Button>
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={handleMerge}
             disabled={merging}
           >
-            <Merge className="h-4 w-4" />
+            {merging ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Merge className="h-4 w-4" />
+            )}
             {merging ? "Merging…" : "Merge profiles"}
           </Button>
         </div>
         {preview ? (
-          <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
             {[
               { label: "Anonymous", p: preview.anon, traits: preview.anonTraits },
               { label: "Known", p: preview.known, traits: preview.knownTraits },
             ].map((side) => (
               <div
                 key={side.label}
-                className="rounded-xl border border-border bg-surface-card p-3"
+                className="min-w-0 rounded-xl border border-border bg-surface-card p-4"
               >
-                <p className="font-medium text-foreground">{side.label}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium uppercase tracking-wider text-text-secondary">
+                    {side.label}
+                  </p>
+                  {side.p ? (
+                    <Badge variant="success">Found</Badge>
+                  ) : (
+                    <Badge variant="neutral">New</Badge>
+                  )}
+                </div>
                 {side.p ? (
                   <>
-                    <p className="mt-1 text-text-secondary">
-                      {side.p.primaryIdentifier} ·{" "}
-                      {(side.p.identifiers || []).length} aliases
+                    <p className="mt-2 truncate text-sm font-medium text-foreground">
+                      {side.p.primaryIdentifier}
                     </p>
-                    <p className="mt-1 text-xs text-text-secondary">
+                    <p className="mt-1 break-words text-xs text-text-secondary">
+                      {(side.p.identifiers || []).length} aliases ·{" "}
                       {Object.keys(side.traits || {}).length} traits
                       {side.traits && Object.keys(side.traits).length
                         ? `: ${Object.keys(side.traits).join(", ")}`
@@ -221,7 +235,7 @@ export function IdentityScreen() {
                     </p>
                   </>
                 ) : (
-                  <p className="mt-1 text-text-secondary">
+                  <p className="mt-2 text-sm text-text-secondary">
                     Not found — it will be created on merge.
                   </p>
                 )}
@@ -232,7 +246,6 @@ export function IdentityScreen() {
       </SectionCard>
 
       <Toolbar>
-        <div />
         <SearchInput
           value={search}
           onChange={setSearch}

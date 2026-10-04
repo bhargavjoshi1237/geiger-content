@@ -12,7 +12,7 @@ import {
   SectionCard,
   SettingRow,
   SettingsList,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { Skeleton } from "@geiger/ui/skeleton";
@@ -97,7 +97,7 @@ export function WorkspaceScreen() {
               }
               icon={BriefcaseBusiness}
               control={
-                <span className="text-sm font-medium text-muted-foreground">
+                <span className="block max-w-full break-words text-sm font-medium text-foreground sm:max-w-56">
                   {project?.name || "Untitled project"}
                 </span>
               }
@@ -107,12 +107,13 @@ export function WorkspaceScreen() {
               description="Shown in previews and delivery surfaces."
               icon={Tag}
               control={
-                <Field label="Brand name">
+                <Field label="Brand name" htmlFor="workspace-brand-name">
                   <Input
+                    id="workspace-brand-name"
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
                     placeholder="e.g. Geiger"
-                    className="w-56"
+                    className="w-full sm:w-56"
                   />
                 </Field>
               }

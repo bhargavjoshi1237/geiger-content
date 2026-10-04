@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { isDemoMode } from "@/supabase/demo/demo-mode";
 
 // Shared Supabase helpers for the Content product. The single place that pins
 // the base browser client to a Postgres schema, so data files don't repeat the
@@ -7,11 +8,14 @@ import { createClient } from "@/lib/supabase/client";
 // toast (the screen owns UX).
 
 // True only when both public env vars are present, so every DB call can
-// degrade to "no DB" (null/[]/false) instead of crashing.
+// degrade to "no DB" (null/[]/false) instead of crashing. The playground's demo client counts as configured.
 export function isSupabaseConfigured() {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  return (
+    isDemoMode() ||
+    Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    )
   );
 }
 

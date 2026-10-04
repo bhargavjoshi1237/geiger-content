@@ -1,6 +1,4 @@
-// Lookups & formatters for the Governance area. Config only — never row data.
-// Row data lives behind lib/supabase/{rbac,audit,policies}.js; screens start
-// empty + loading.
+// Governance lookups & formatters — config only; rows come from lib/supabase/{rbac,audit,policies}.js.
 
 export const GRANT_STATUS_MAP = {
   active: { label: "Active", variant: "success", dotClass: "bg-emerald-400" },
@@ -8,20 +6,42 @@ export const GRANT_STATUS_MAP = {
   suspended: {
     label: "Suspended",
     variant: "neutral",
-    dotClass: "bg-[#737373]",
+    dotClass: "bg-text-tertiary",
   },
 };
 
 export const ENFORCED_MAP = {
   Enforced: { label: "Enforced", variant: "success", dotClass: "bg-emerald-400" },
-  Disabled: { label: "Disabled", variant: "neutral", dotClass: "bg-[#737373]" },
+  Disabled: { label: "Disabled", variant: "neutral", dotClass: "bg-text-tertiary" },
 };
 
 export const ACTION_MAP = {
   create: { label: "Create", variant: "success" },
   update: { label: "Update", variant: "info" },
-  delete: { label: "Delete", variant: "destructive" },
+  delete: { label: "Delete", variant: "danger" },
   publish: { label: "Publish", variant: "purple" },
+};
+
+export const ROLE_TYPE_MAP = {
+  system: { label: "System", variant: "info", dotClass: "bg-sky-400" },
+  custom: { label: "Custom", variant: "neutral", dotClass: "bg-text-tertiary" },
+};
+
+export const RETENTION_ACTION_MAP = {
+  archive: { label: "Archive", variant: "neutral", dotClass: "bg-text-tertiary" },
+  soft_delete: { label: "Soft delete", variant: "warning", dotClass: "bg-amber-400" },
+  purge: { label: "Purge", variant: "danger", dotClass: "bg-red-400" },
+};
+
+export const CONSENT_STATUS_MAP = {
+  granted: { label: "Granted", variant: "success", dotClass: "bg-emerald-400" },
+  denied: { label: "Denied", variant: "danger", dotClass: "bg-red-400" },
+  pending: { label: "Pending", variant: "warning", dotClass: "bg-amber-400" },
+};
+
+export const PERMISSION_RESULT_MAP = {
+  allowed: { label: "Allowed", variant: "success", dotClass: "bg-emerald-400" },
+  denied: { label: "Denied", variant: "danger", dotClass: "bg-red-400" },
 };
 
 export const RETENTION_ACTION_OPTIONS = [

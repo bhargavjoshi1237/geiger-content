@@ -142,6 +142,24 @@ npm run feed:fleet -- requeue        # retry blocked/failed tasks
 
 First fleet test (one machine, 4 min): 360 images, 175 requests, no rate-limit waits.
 
+If Kaggle logs `/api/posts/search 422: Timeout. Maybe slow down a bit`, check whether
+the current task starts with `search:`. Keyword queries can time out even when plain
+subreddit scans work. Rebuild the worker, replace the notebook's older copy, and run
+only scans while those queries are failing:
+
+```bash
+# Run locally, then upload data/feed-fleet/feed-worker.mjs to the private Kaggle notebook.
+npm run feed:fleet -- build
+# Run in Kaggle (adjust the path to the uploaded file).
+node feed-worker.mjs --name kaggle-scan --phase scan --max-proxies 0 --interval-ms 3000
+```
+
+The startup line must say `fleet-3` and `(scan)`. Scan-only workers resume existing
+scan cursors and exit when their scan queue finishes; they leave keyword searches
+queued. `--phase all` (the default) and `--phase search` remain available. Run one
+direct worker per notebook IP and keep Kaggle Internet enabled. The bundled file
+contains the restricted worker database credential, so keep the upload private.
+
 ### First crawl (2026-10-01 → 02)
 
 | | |
@@ -249,7 +267,85 @@ owner found in 1/8); that is corpus depth, fixed by the next crawl parts, not th
 interests are found in ≥80% of seeded runs, depth advances one step at a time, probes stay
 under 15% of impressions, and the same seed reproduces the same feed.
 
-## 5. Files
+## 5. Embeddings and the live feed
+
+### Model: Nomic Embed v1.5 (open, multimodal, free to run)
+
+`nomic-embed-vision-v1.5` (images, ~93M params) and `nomic-embed-text-v1.5` (text) share one
+768-d space, both Apache-2.0. Images are embedded **once** on a free Kaggle GPU; text queries use
+the hosted Nomic API (free tier, `NOMIC_API_KEY`) or the same open weights locally
+(`npm i @huggingface/transformers`). The feed itself needs **no inference at serve time**: reader
+taste vectors are sums of stored image vectors, so similarity is plain pgvector on Aiven.
+Gemini (`lib/vector/*`) stays the model for project content; feed vectors are a separate table
+keyed by model, so the two spaces never mix.
+
+### Ingest + captions (Kaggle notebook, resumable)
+
+```bash
+npm run vector:db:push                 # feed_image_embeddings / feed_image_captions / feed_profiles / feed_events
+npm run feed:embed -- build            # feed_embedder login + data/feed-embed/feed_enrich.ipynb (git-ignored, private)
+# Kaggle → File → Import Notebook → GPU T4 x2 + Internet on → Run All (or "Save & Run All" for a 12 h background run)
+npm run feed:embed -- status           # embeddings + captions progress
+```
+
+`scripts/kaggle/feed_enrich.py` is the notebook source in `# %%` cells (paste by hand and use the
+Kaggle secret `FEED_EMBED_DATABASE_URL` instead of the generated notebook if preferred). Every run
+selects only images with no row yet for that model, so it can be stopped and re-run any time:
+
+1. **Embeddings** — Nomic vision, fp16, batches of 64 → `content.feed_image_embeddings` (minutes).
+2. **Captions** — `Qwen/Qwen3-VL-4B-Instruct` writes JSON (description, tags, subjects, setting, style,
+   visible text) → `content.feed_image_captions` (hours; one model replica per GPU). T4/P100 have no
+   bf16, and bf16-trained Qwen can overflow in fp16, so two probe images pick the precision first:
+   fp16 if clean, else 4B in fp32 split over 2 GPUs, else `Qwen3-VL-2B-Instruct` in fp32. Qwen3.5
+   (2B/4B) works by setting `CAPTION_MODEL` + `TRANSFORMERS = "transformers>=5.3"` with
+   `RUN_EMBED = False` (Nomic's remote code targets transformers 4.x).
+
+**Shared pool.** Every copy of the notebook claims its next images in `content.feed_enrich_leases`
+(20-minute leases, unique per image and task, random start point), so Kaggle sessions on several
+accounts, Colab (single T4) and a local GPU can all run at once with no coordination; a stopped
+worker's claims expire and are taken over. Batch size is set from free GPU memory and halves itself on
+OOM; Ampere GPUs (RTX 30xx/40xx) run bf16. `feed:embed -- status` lists active workers and the pool rate.
+
+Images deleted from Reddit (404 at embed time, ~14%) are skipped by captions and the live feed;
+other failures are stored as `failed` (`RETRY_FAILED = True` retries up to 3 times). Descriptions
+appear on live-feed cards.
+
+### Taste vectors (`lib/feed/taste.mjs`)
+
+Per reader: one long-term vector **per interest topic** (top 8 kept, 14-day half-life), a
+short-term "right now" vector (45-minute half-life), and a negative vector from hides (and a
+little from skips). Likes/saves/long dwells add the image's vector, weighted like the engine's
+engagement signal. A single averaged vector was tried first and failed: two interests averaged
+into neither and the similar slot pulled the wrong corner of the catalog.
+
+### The similar slot (`composeFeed(..., { similar })`)
+
+Each batch, the strongest 3 interest vectors (60 neighbours each) and the right-now vector (40)
+are searched in pgvector; the engine takes **~45% of a warm batch (4–5 of 10)** from those
+neighbours, scaled by taste readiness and by how the similar slot itself performs against the
+reader's overall engagement rate. Neighbours must be unseen, within the reader's known depth for
+their subtopic, not in a subtopic they avoid, and at most 1 per horizontal / 2 per subtopic; the
+spacing rules still apply (max 3 per topic per batch), so the rest of the batch stays tree-driven:
+probes, bridges, explore and fresh.
+
+Synthetic catalog with clustered embeddings, 60 batches, seeds 5 and 11 (tree → hybrid, late
+engagement): shifting taste 0.04 → 0.15–0.23, drift-out 0.04–0.06 → 0.13–0.18, AIO owner
+0.18–0.22 → 0.15–0.23, spacing violations 0 everywhere; similar items are engaged ~30–35% of the
+time vs ~20% overall. Re-run on the real catalog once embedded: `npm run feed:embed -- simulate`.
+
+### Live feed (`/project/feed/<projectId>`, `/api/feed/*`, `lib/feed/live.mjs`)
+
+A full-screen page in the desktop YouTube Shorts layout (Feed Lab → **Open live feed**): one 9:16 short
+per screen with scroll-snap (wheel, ↑/↓, J/K or the round buttons on the right), the image over a
+blurred fill of itself, and an action rail beside it — Like, Not for me (hide), Save, Similar, Reddit,
+Insights. Time on screen per short gives dwell (≥1 s) or skip when the reader moves on (paused while the
+tab is hidden). Events flush every 3 s and before each next batch (fetched 4 shorts before the end),
+update the reader's tree interests + taste vectors under a row lock, and are logged to
+`content.feed_events` for replay. Each named reader is a `content.feed_profiles` row (engine state +
+blended `taste` vector). The Insights panel (where Shorts shows comments) shows what is being learned,
+switches/resets readers and searches the catalog by text or image.
+
+## 6. Files
 
 | Path | Role |
 |---|---|
@@ -262,21 +358,21 @@ under 15% of impressions, and the same seed reproduces the same feed.
 | `lib/feed/crawl/fleet.mjs` | fleet queue: task plan, lease/ingest SQL, worker loop |
 | `scripts/feed-fleet.mjs`, `scripts/feed-worker.mjs` | fleet coordinator + worker (bundled to one file) |
 | `lib/feed/engine.mjs` | feed engine (pure) |
-| `lib/feed/simulator.mjs` | personas, synthetic catalog, metrics |
+| `lib/feed/simulator.mjs` | personas, synthetic catalog + embeddings, metrics (sync and async drivers) |
+| `lib/feed/taste.mjs` | reader taste vectors (pure) |
+| `lib/feed/vectors.mjs`, `lib/feed/live.mjs`, `lib/feed/query-text.mjs` | Aiven feed vectors/profiles, live feed service, text → vector |
+| `scripts/kaggle/feed_enrich.py`, `scripts/feed-embed.mjs` | Kaggle notebook (embeddings + Qwen captions) + coordinator (`npm run feed:embed`) |
+| `app/api/feed/[operation]/route.js`, `app/project/feed/[projectId]/`, `components/internal/screens/feed/*` | live feed API + Shorts-style page (`use_live_feed.js` holds the data/behaviour logic) |
 | `scripts/feed-crawl.mjs`, `scripts/feed-simulate.mjs` | CLIs |
 | `components/internal/screens/recommendations/feed_lab.jsx` | Feed Lab screen |
 | `tests/feed-*.test.mjs` | `npm run test:feed` |
 | `data/feed-corpus/` | crawl output (git-ignored) |
-| `data/feed-fleet/` | built worker with credentials baked in (git-ignored) |
+| `data/feed-fleet/`, `data/feed-embed/` | built worker / notebook with credentials baked in (git-ignored) |
 
-## 6. Next steps
+## 7. Next steps
 
-- **Ingestion.** The manifest is ready to import as content assets, but the current vector
-  budget (800 ingestion requests/day per project) means ~150k images take months to embed;
-  batch-import a balanced subset first, or raise the budget.
-- **Persist reader state.** The engine state (`createUserState`) is plain JSON; storing it
-  per profile (with consent) and calling `composeFeed`/`recordEvent` from a delivery route
-  turns the lab into the live feed.
+- **Embed the corpus.** Run the Kaggle notebook (§5), then `feed:embed -- simulate` on the real
+  catalog and tune `similarShare` / taste half-lives from the live feed's `feed_events`.
 - **Bridges from embeddings.** Once images are embedded, add visual-similarity bridges
   between horizontals alongside the subreddit graph.
 - **Thin topics first.** `report.md` ranks topics by images; deepen the thinnest before the

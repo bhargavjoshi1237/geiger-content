@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FlaskConical, Loader2, Play } from "lucide-react";
+import Link from "next/link";
+import { FlaskConical, Loader2, Play, Rss } from "lucide-react";
 import { LogoLoading } from "@geiger/ui";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
@@ -20,19 +21,18 @@ import {
   Field,
   ScreenHeader,
   SectionCard,
-  StatsBar,
-} from "@/components/internal/shared/screen_kit";
+  StatGrid,
+} from "@geiger/ui/screen-kit";
 import {
   CartesianGrid,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   GRID_STROKE,
   Line,
   LineChart,
   XAxis,
   YAxis,
 } from "@/components/internal/screens/intelligence/charts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@geiger/ui/chart";
+import { useProject } from "@/context/project-context";
 import { FEED_SLOT_MAP, FEED_SLOTS, formatPercent } from "./constants";
 
 const depthChartConfig = {
@@ -75,6 +75,7 @@ export function FeedLabScreen() {
   const [batches, setBatches] = useState(60);
   const [seed, setSeed] = useState(42);
   const [result, setResult] = useState(null);
+  const { projectId } = useProject();
 
   const run = useCallback((persona = personaId) => {
     if (!lab) return;
@@ -121,7 +122,7 @@ export function FeedLabScreen() {
     {
       key: "subtopic",
       header: "Subtopic",
-      render: (s) => <span className="font-medium text-foreground">{names[s.id] || s.id}</span>,
+      render: (s) => <span className="block max-w-[16rem] truncate font-medium text-foreground sm:max-w-sm" title={names[s.id] || s.id}>{names[s.id] || s.id}</span>,
     },
     { key: "interest", header: "Engagement", align: "right", render: (s) => formatPercent(s.interest) },
     { key: "lift", header: "Lift", align: "right", render: (s) => `${s.lift.toFixed(2)}×` },
@@ -145,27 +146,34 @@ export function FeedLabScreen() {
         title="Feed Lab"
         description="Simulate how the blended feed discovers a reader's interests, leads them deeper, and stays fresh."
         actions={
-          <Button onClick={() => run()} disabled={running} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Run simulation
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {projectId && (
+              <Button asChild variant="ghost">
+                <Link href={`/project/feed/${projectId}`}><Rss className="h-4 w-4" /> Open live feed</Link>
+              </Button>
+            )}
+            <Button onClick={() => run()} disabled={running} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Run simulation
+            </Button>
+          </div>
         }
       />
-      {stats.length > 0 && <StatsBar stats={stats} />}
+      {stats.length > 0 && <StatGrid stats={stats} columns={5} />}
       <SectionCard title="Simulation" description="Synthetic readers with hidden tastes scroll ten-item batches; the engine only sees their likes, saves, dwells and skips.">
         <div className="flex flex-wrap items-end gap-4">
-          <Field label="Reader" hint={persona?.label}>
+          <Field label="Reader" hint={persona?.label} className="min-w-0 w-full sm:w-64">
             <Select value={personaId} onValueChange={(value) => { setPersonaId(value); run(value); }}>
-              <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Reader"><SelectValue/></SelectTrigger>
               <SelectContent>
                 {lab.personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Batches" hint="10 items each.">
-            <Input type="number" min="5" max="150" value={batches} onChange={(e) => setBatches(e.target.value)} className="w-28" />
+          <Field label="Batches" htmlFor="feed-lab-batches" hint="10 items each." className="min-w-0 w-full sm:w-28">
+            <Input id="feed-lab-batches" type="number" min="5" max="150" value={batches} onChange={(e) => setBatches(e.target.value)} />
           </Field>
-          <Field label="Seed" hint="Same seed, same feed.">
-            <Input type="number" min="1" value={seed} onChange={(e) => setSeed(e.target.value)} className="w-28" />
+          <Field label="Seed" htmlFor="feed-lab-seed" hint="Same seed, feed." className="min-w-0 w-full sm:w-28">
+            <Input id="feed-lab-seed" type="number" min="1" value={seed} onChange={(e) => setSeed(e.target.value)} />
           </Field>
         </div>
       </SectionCard>
@@ -178,7 +186,7 @@ export function FeedLabScreen() {
                   <CartesianGrid stroke={GRID_STROKE} strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="batch" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
                   <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} allowDecimals={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartTooltip content={<ChartTooltipContent/>} />
                   <Line type="stepAfter" dataKey="focusDepth" stroke="var(--color-focusDepth)" strokeWidth={2.5} dot={false} />
                   <Line type="monotone" dataKey="engaged" stroke="var(--color-engaged)" strokeWidth={2} dot={false} />
                 </LineChart>
@@ -188,11 +196,11 @@ export function FeedLabScreen() {
               <div className="flex flex-col gap-3">
                 {slotMix.map(({ slot, share }) => (
                   <div key={slot} className="flex items-center justify-between gap-3">
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex min-w-0 flex-col gap-0.5">
                       <Badge variant={FEED_SLOT_MAP[slot].variant} className="w-fit">{FEED_SLOT_MAP[slot].label}</Badge>
                       <span className="text-xs text-text-tertiary">{FEED_SLOT_MAP[slot].description}</span>
                     </div>
-                    <span className="text-sm tabular-nums text-foreground">{formatPercent(share)}</span>
+                    <span className="shrink-0 text-sm tabular-nums text-foreground">{formatPercent(share)}</span>
                   </div>
                 ))}
               </div>
@@ -202,12 +210,12 @@ export function FeedLabScreen() {
             <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto pr-1">
               {result.timeline.map((t) => (
                 <div key={t.batch} className="flex items-start gap-3">
-                  <span className="w-14 shrink-0 pt-0.5 text-xs tabular-nums text-text-tertiary">#{t.batch + 1}</span>
-                  <div className="flex flex-wrap gap-1.5">
+                  <span className="w-8 shrink-0 pt-0.5 text-xs tabular-nums text-text-tertiary sm:w-14">#{t.batch + 1}</span>
+                  <div className="flex min-w-0 flex-wrap gap-1.5">
                     {t.topics.map((topic, i) => (
-                      <Badge key={i} variant={FEED_SLOT_MAP[t.slots[i]]?.variant || "neutral"} title={FEED_SLOT_MAP[t.slots[i]]?.label}>
-                        {names[topic] || topic}
-                        <span className="opacity-60">·{t.depths[i]}</span>
+                      <Badge key={i} className="max-w-full" variant={FEED_SLOT_MAP[t.slots[i]]?.variant || "neutral"} title={`${names[topic] || topic} · ${FEED_SLOT_MAP[t.slots[i]]?.label || ""}`}>
+                        <span className="truncate">{names[topic] || topic}</span>
+                        <span className="shrink-0 opacity-60">·{t.depths[i]}</span>
                       </Badge>
                     ))}
                   </div>
@@ -215,7 +223,7 @@ export function FeedLabScreen() {
               ))}
             </div>
           </SectionCard>
-          <SectionCard title="Learned profile" description="What the engine inferred, relative to the reader's overall engagement.">
+          <SectionCard bare title="Learned profile" description="What the engine inferred, relative to the reader's overall engagement.">
             <DataTable
               columns={profileColumns}
               data={metrics.profile.subtopics}

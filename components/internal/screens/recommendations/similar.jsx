@@ -11,7 +11,7 @@ import {
   ScreenHeader,
   SectionCard,
   StatsBar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import {
   Select,
   SelectContent,
@@ -23,6 +23,7 @@ import { listContent } from "@/lib/supabase/content";
 import { similarContent } from "@/lib/supabase/recommend";
 import { semanticSimilarity } from "@/lib/supabase/semantic";
 import { useProject } from "@/context/project-context";
+import { EMPTY_PANEL_CLASS } from "./constants";
 
 // Similar Content: keyword-overlap ranking against a reference entry.
 export function SimilarScreen() {
@@ -72,15 +73,15 @@ export function SimilarScreen() {
     {
       key: "entry", header: "Similar entry",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.entry.title || r.entry.slug}</span>
+        <div className="flex min-w-0 max-w-[16rem] flex-col gap-1 sm:max-w-lg">
+          <span className="line-clamp-2 font-medium text-foreground">{r.entry.title || r.entry.slug}</span>
           <span className="text-xs text-text-secondary">{r.entry.type} · {r.entry.status}</span>
         </div>
       ),
     },
     {
-      key: "score", header: "Score",
-      render: (r) => <span className="text-sm text-foreground">{r.score.toFixed(2)}</span>,
+      key: "score", header: "Score", align: "right",
+      render: (r) => <span className="text-sm font-semibold tabular-nums text-foreground">{r.score.toFixed(2)}</span>,
     },
   ];
 
@@ -92,7 +93,7 @@ export function SimilarScreen() {
         actions={
           entries.length > 0 ? (
             <Select value={referenceId} onValueChange={setReferenceId}>
-              <SelectTrigger className="w-64"><SelectValue placeholder="Reference entry" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-64" aria-label="Reference entry"><SelectValue placeholder="Reference entry" /></SelectTrigger>
               <SelectContent>
                 {entries.map((e) => <SelectItem key={e.id} value={e.id}>{e.title || e.slug}</SelectItem>)}
               </SelectContent>
@@ -100,14 +101,18 @@ export function SimilarScreen() {
           ) : null
         }
       />
-      <StatsBar stats={stats} />
-      {semanticResult && !semanticResult.ok ? <p role="status" className="text-sm text-text-secondary">Keyword fallback: {semanticResult.error}</p> : null}
+      <StatsBar stats={stats} columns={3} />
+      {semanticResult && !semanticResult.ok ? <p role="status" className="text-xs text-text-secondary">Keyword fallback: {semanticResult.error}</p> : null}
       {loading ? (
         <TableSkeleton columns={columns} />
       ) : !reference ? (
-        <EmptyState icon={ScanSearch} title="No entries yet" description="Publish content first — similarity needs something to compare." />
+        <EmptyState icon={ScanSearch} title="No entries yet" description="Publish content first — similarity needs something to compare." className={EMPTY_PANEL_CLASS} />
       ) : (
-        <SectionCard title={`Similar to “${reference.title || reference.slug}”`} description={method === "Semantic" ? "Semantic similarity with editorial adjustments." : "Keyword overlap coefficients; semantic retrieval is unavailable."}>
+        <SectionCard
+          bare
+          title={`Similar to “${reference.title || reference.slug}”`}
+          description={method === "Semantic" ? "Semantic similarity with editorial adjustments." : "Keyword overlap coefficients; semantic retrieval is unavailable."}
+        >
           <DataTable
             columns={columns}
             data={ranked}

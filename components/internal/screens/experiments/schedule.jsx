@@ -13,11 +13,12 @@ import {
   SearchInput,
   StatsBar,
   Toolbar,
-} from "@/components/internal/shared/screen_kit";
+} from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { Input } from "@geiger/ui/input";
 import { listExperiments, updateExperiment } from "@/lib/supabase/experiments";
 import { useProject } from "@/context/project-context";
+import { ExperimentCell } from "./parts";
 
 function toInput(iso) {
   if (!iso) return "";
@@ -88,10 +89,7 @@ export function ScheduleScreen() {
     {
       key: "exp", header: "Experiment",
       render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">{r.name}</span>
-          <span className="text-xs text-text-secondary">{r.status}</span>
-        </div>
+        <ExperimentCell name={r.name} meta={r.status} />
       ),
     },
     {
@@ -99,13 +97,15 @@ export function ScheduleScreen() {
       render: (r) => (
         <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <Input
-            type="datetime-local" className="h-8 w-auto"
+            type="datetime-local" className="h-8 w-56"
+            aria-label={`Start time for ${r.name}`}
             value={drafts[r.id]?.startsAt ?? toInput(r.startsAt)}
             onChange={(e) => setDrafts((d) => ({ ...d, [r.id]: { ...d[r.id], startsAt: e.target.value } }))}
           />
           <span className="text-xs text-text-secondary">→</span>
           <Input
-            type="datetime-local" className="h-8 w-auto"
+            type="datetime-local" className="h-8 w-56"
+            aria-label={`End time for ${r.name}`}
             value={drafts[r.id]?.endsAt ?? toInput(r.endsAt)}
             onChange={(e) => setDrafts((d) => ({ ...d, [r.id]: { ...d[r.id], endsAt: e.target.value } }))}
           />
