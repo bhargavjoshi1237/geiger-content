@@ -177,7 +177,7 @@ export function DeliveryApisScreen() {
 
         <SectionCard
           title="Live response preview"
-          description="GET /api/content/v1/entries?limit=5 from this browser."
+          description={`GET /api/content/v1/entries?project=${projectId || "<project id>"}&limit=5 from this browser.`}
           action={
             <Button
               variant="outline"

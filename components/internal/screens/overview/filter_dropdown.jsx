@@ -49,7 +49,7 @@ export default function FilterDropdown({
           <Button
             variant="outline"
             className={cn(
-              "rounded-lg border-border bg-surface-card px-3 text-xs font-medium text-foreground hover:bg-surface-subtle",
+              "rounded-lg border-border bg-surface-card px-3 text-xs font-medium text-foreground hover:bg-surface-hover dark:hover:bg-surface-subtle",
               height,
             )}
           >

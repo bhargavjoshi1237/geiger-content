@@ -1,20 +1,14 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@geiger/ui/button";
+import { PlaygroundFrame } from "@/components/landing/PlaygroundFrame";
 
-// Client-only: the playground runs the whole workspace in the browser.
-const ContentPlayground = dynamic(
-  () =>
-    import("@/components/ContentPlayground").then(
-      (mod) => mod.ContentPlayground,
-    ),
-  { ssr: false },
-);
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-// Landing showcase (mirrors geiger-flow FlowPlaygroundShowcase): intro copy + CTA over a themed photo wash, live workspace below.
+// Landing showcase (mirrors geiger-flow FlowPlaygroundShowcase): intro copy + CTA over a themed photo wash, the live
+// workspace below in an iframe of /playground.
 export default function ContentPlaygroundShowcase({
   ctaHref = "/project",
   ctaLabel = "Open the workspace",
@@ -37,8 +31,8 @@ export default function ContentPlaygroundShowcase({
           </h3>
           <p className="max-w-lg text-muted-foreground">
             This playground runs live on the page with the complete workspace —
-            sidebar navigation, the topbar, and every screen. No save and no
-            load, just pure exploration.
+            sidebar navigation, the topbar, and every screen, filled with
+            Halcyon Studio&apos;s content. Edit anything; it resets when you reload.
           </p>
           <Button asChild className="rounded-full">
             <Link href={ctaHref}>
@@ -49,9 +43,7 @@ export default function ContentPlaygroundShowcase({
         </div>
 
         <div className="relative rounded-2xl border border-border/80 bg-background/70 p-2 shadow-2xl backdrop-blur-md sm:p-3">
-          <div className="h-[680px] overflow-hidden rounded-xl border border-border bg-background sm:h-[760px] lg:h-[900px]">
-            <ContentPlayground />
-          </div>
+          <PlaygroundFrame src={`${BASE_PATH}/playground`} title="Content workspace playground" className="rounded-xl" />
         </div>
       </div>
     </section>

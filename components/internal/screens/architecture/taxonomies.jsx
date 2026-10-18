@@ -528,7 +528,7 @@ export function TaxonomiesScreen() {
                         variant="ghost"
                         aria-label={`Delete term ${t.label}`}
                         size="icon-sm"
-                        className="shrink-0 text-red-400 hover:bg-red-500/10 hover:text-red-400"
+                        className="shrink-0 text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-400"
                         onClick={() => handleDeleteTerm(t)}
                       >
                         <Trash2 className="h-4 w-4" />

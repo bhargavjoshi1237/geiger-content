@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Copy, Download, RefreshCw, Variable } from "lucide-react";
 
@@ -14,125 +14,49 @@ import {
 } from "@geiger/ui/screen-kit";
 import { Button } from "@geiger/ui/button";
 import { CodeBlock } from "./code_block";
-import {
-  contentClient,
-  isSupabaseConfigured,
-} from "@/supabase/components/content-client";
+import { listContentTypes, listFieldsByType } from "@/lib/supabase/types";
+import { buildRegistry, schemaDocument } from "@/lib/delivery/v2/schema.mjs";
+import { generateTypes } from "@/lib/delivery/v2/typegen.mjs";
 import { useProject } from "@/context/project-context";
 
-// Generate TypeScript types for the workspace. Phase 3 will own
-// `content.content_types` (key, name + `content.fields`); until that table
-// exists we probe for it and fall back to the built-in Entry / Collection /
-// Asset / Slot shapes so the screen is useful today.
-const FALLBACK_TYPES = `// Generated from the Geiger Content workspace (fallback shapes).
-// Re-run after Phase 3 defines content_types for per-type interfaces.
-
-export type ContentStatus = "Draft" | "In review" | "Published" | "Scheduled" | "Archived";
-
-export interface ContentEntry {
-  id: string;
-  title: string;
-  slug: string;
-  status: ContentStatus;
-  type: string;
-  excerpt: string;
-  body: string;
-  author: string;
-  locale: string;
-  coverUrl: string;
-  scheduledAt: string | null;
-  publishedAt: string | null;
-  projectId: string | null;
-}
-
-export interface ContentCollection {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  status: string;
-  itemCount: number;
-}
-
-export interface ContentAsset {
-  id: string;
-  name: string;
-  fileType: string;
-  mime: string;
-  sizeBytes: number;
-  url: string;
-}
-
-export interface ContentSlot {
-  id: string;
-  key: string;
-  name: string;
-  status: string;
-  fallbackEntryId: string | null;
-}
-`;
-
-function toTsType(field) {
-  const t = String(field.data_type || "text").toLowerCase();
-  if (t === "number" || t === "integer" || t === "float") return "number";
-  if (t === "boolean" || t === "bool") return "boolean";
-  if (t === "date" || t === "datetime" || t === "timestamptz") return "string";
-  if (t === "json" || t === "jsonb" || t === "array") return "unknown";
-  return "string";
-}
-
-function typesFromContentTypes(contentTypes) {
-  const blocks = contentTypes.map((ct) => {
-    const fields = Array.isArray(ct.fields) ? ct.fields : [];
-    const lines = fields.map(
-      (f) => `  ${f.key}: ${toTsType(f)};`,
-    );
-    return `export interface ${ct.name} {\n  id: string;\n  slug: string;\n  status: ContentStatus;\n${lines.join("\n")}\n}`;
-  });
-  return `// Generated from content.content_types.\nexport type ContentStatus = "Draft" | "In review" | "Published" | "Scheduled" | "Archived";\n\n${blocks.join("\n\n")}\n`;
-}
-
-async function loadTypeOutput() {
-  if (!isSupabaseConfigured()) return { output: FALLBACK_TYPES, source: "fallback" };
-  try {
-    const sb = contentClient();
-    const { data, error } = await sb
-      .from("content_types")
-      .select("key, name, fields")
-      .order("name", { ascending: true });
-    if (error || !data || data.length === 0) {
-      if (error) console.error("[types.generate]", error.message);
-      return { output: FALLBACK_TYPES, source: "fallback" };
-    }
-    return { output: typesFromContentTypes(data), source: "content_types" };
-  } catch (e) {
-    console.error("[types.generate]", e);
-    return { output: FALLBACK_TYPES, source: "fallback" };
-  }
+// Same generator as GET /api/content/v2/projects/<id>/_schema?format=ts, fed from the workspace's own reads.
+async function loadSchema(projectId) {
+  const types = (await listContentTypes(projectId)) ?? [];
+  const fields = (
+    await Promise.all(types.map(async (t) => (await listFieldsByType(t.id)) ?? []))
+  ).flat();
+  const registry = buildRegistry(
+    types.map((t) => ({ id: t.id, key: t.key, name: t.name, api_id: t.apiId, api_plural: t.apiPlural })),
+    fields.map((f) => ({
+      type_id: f.typeId,
+      key: f.key,
+      label: f.label,
+      data_type: f.dataType,
+      validation: f.validation,
+      localized: f.localized,
+      position: f.position,
+      metadata: f.metadata,
+    })),
+  );
+  return schemaDocument(registry);
 }
 
 export function TypesScreen() {
   const { projectId } = useProject();
-  const [output, setOutput] = useState("");
-  const [source, setSource] = useState("fallback");
+  const [schema, setSchema] = useState({ types: [] });
   const [loading, setLoading] = useState(true);
 
-  const generate = async () => {
+  const generate = useCallback(async () => {
     setLoading(true);
-    const next = await loadTypeOutput();
-    setOutput(next.output);
-    setSource(next.source);
+    setSchema(await loadSchema(projectId));
     setLoading(false);
-  };
+  }, [projectId]);
 
-  // Probe once on mount (and when the project changes); output is
-  // project-independent until content_types itself is project-scoped.
   useEffect(() => {
     let alive = true;
-    loadTypeOutput().then((next) => {
+    loadSchema(projectId).then((next) => {
       if (!alive) return;
-      setOutput(next.output);
-      setSource(next.source);
+      setSchema(next);
       setLoading(false);
     });
     return () => {
@@ -140,10 +64,15 @@ export function TypesScreen() {
     };
   }, [projectId]);
 
-  const interfaceCount = useMemo(
-    () => (output.match(/export interface /g) || []).length,
-    [output],
+  const output = useMemo(
+    () => (schema.types.length ? generateTypes(schema, { source: "Geiger Content" }) : ""),
+    [schema],
   );
+
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+  const command = `curl -H "Authorization: Bearer $GEIGER_TOKEN" \\
+  "https://your-app.example${basePath}/api/content/v2/projects/${projectId || "<project id>"}/_schema?format=ts" \\
+  -o geiger-content.d.ts`;
 
   const copy = async () => {
     try {
@@ -175,25 +104,22 @@ export function TypesScreen() {
 
   const stats = useMemo(
     () => [
-      { label: "Interfaces", value: String(interfaceCount), footer: "Generated" },
+      { label: "Content types", value: String(schema.types.length), footer: "One interface each" },
       {
-        label: "Source",
-        value: source === "content_types" ? "Types" : "Fallback",
-        footer:
-          source === "content_types"
-            ? "From content_types"
-            : "content_types not yet defined",
+        label: "Fields",
+        value: String(schema.types.reduce((n, t) => n + t.fields.length, 0)),
+        footer: "Delivered, typed fields",
       },
       { label: "Lines", value: String(output ? output.split("\n").length : 0), footer: "Output size" },
     ],
-    [interfaceCount, source, output],
+    [schema, output],
   );
 
   return (
     <MainScreenWrapper>
       <ScreenHeader
         title="Type Generation"
-        description="Generate TypeScript interfaces from the workspace's content types."
+        description="TypeScript types for the delivery API, generated from this project's content types."
         actions={
           <>
             <Button
@@ -231,21 +157,25 @@ export function TypesScreen() {
         <div className="rounded-xl border border-border bg-surface-subtle">
           <EmptyState
             icon={Variable}
-            title="Nothing to generate"
-            description="Define a content type first (Phase 3), or use the fallback shapes."
+            title="No content types yet"
+            description="Define a content type under Architecture, then generate its types here."
           />
         </div>
       ) : (
-        <SectionCard
-          title="geiger-content.d.ts"
-          description={
-            source === "content_types"
-              ? "Generated from content.content_types."
-              : "Fallback shapes — content_types is not defined yet (Phase 3)."
-          }
-        >
-          <CodeBlock code={output} preClassName="max-h-[32rem]" />
-        </SectionCard>
+        <>
+          <SectionCard
+            title="geiger-content.d.ts"
+            description="Entry interfaces, filter types and a plural → type map. Private fields are left out."
+          >
+            <CodeBlock code={output} preClassName="max-h-[32rem]" />
+          </SectionCard>
+          <SectionCard
+            title="Fetch in CI"
+            description="The same file over the API. Needs a token with the schema:read scope."
+          >
+            <CodeBlock code={command} />
+          </SectionCard>
+        </>
       )}
     </MainScreenWrapper>
   );

@@ -137,7 +137,7 @@ export function AudiencePerformanceScreen() {
               header: "Growth",
               align: "right",
               render: (r) => (
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400">
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                   <TrendingUp className="h-3.5 w-3.5" /> {r.growth}
                 </span>
               ),

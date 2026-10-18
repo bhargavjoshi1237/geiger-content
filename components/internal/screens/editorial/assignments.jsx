@@ -308,7 +308,7 @@ export function AssignmentsScreen() {
             <span
               className={
                 r.status !== "Done" && r.dueAt && new Date(r.dueAt).getTime() < now
-                  ? "text-red-400"
+                  ? "text-red-600 dark:text-red-400"
                   : undefined
               }
             >

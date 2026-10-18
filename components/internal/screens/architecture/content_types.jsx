@@ -37,7 +37,7 @@ import { getUser } from "@/lib/supabase/user";
 import { useProject } from "@/context/project-context";
 import { keyify, newId } from "./constants";
 
-const EMPTY_DRAFT = { key: "", name: "", icon: "" };
+const EMPTY_DRAFT = { key: "", name: "", icon: "", apiId: "" };
 
 // Mounted fresh on every open (see `{dialogOpen && ...}` below), so the
 // useState initializer seeds the draft — no reset effect is needed.
@@ -87,6 +87,20 @@ function TypeDialog({ initial, onClose, onSave }) {
               />
             </Field>
           </div>
+          <Field
+            label="API ID"
+            hint={
+              draft.apiPlural
+                ? `Delivered at /api/content/v2/projects/<project>/${draft.apiPlural}. Changing it breaks existing API URLs.`
+                : "Delivery URL id. Leave blank to derive it from the key."
+            }
+          >
+            <Input
+              value={draft.apiId || ""}
+              onChange={(e) => set("apiId")(e.target.value)}
+              placeholder="article"
+            />
+          </Field>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
@@ -186,6 +200,7 @@ export function ContentTypesScreen() {
       name: draft.name.trim(),
       key: draft.key,
       icon: draft.icon || "",
+      apiId: draft.apiId || "",
       createdBy: userId,
       projectId,
     };
@@ -223,6 +238,7 @@ export function ContentTypesScreen() {
           <span className="truncate font-medium text-foreground" title={r.name}>{r.name}</span>
           <span className="truncate text-xs text-text-secondary">
             {r.key || "no key"} · {fieldCounts[r.id] ?? 0} fields
+            {r.apiPlural ? ` · /${r.apiPlural}` : ""}
           </span>
         </div>
       ),

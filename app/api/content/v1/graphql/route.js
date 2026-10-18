@@ -1,4 +1,5 @@
 import { publishedClient } from "@/lib/delivery/public";
+import { isUuid } from "@/lib/vector/auth.mjs";
 
 // Published delivery supports a bounded subset of GraphQL selection syntax.
 
@@ -38,6 +39,11 @@ function pickFields(query) {
   return fields.length ? fields : null;
 }
 
+// One string argument from an argument list such as `slug: "x", projectId: "y"`.
+function argument(args, name) {
+  return String(args || "").match(new RegExp(`\\b${name}\\s*:\\s*"([^"]+)"`))?.[1] || null;
+}
+
 function projectRow(row, fields) {
   const out = {};
   for (const name of fields) {
@@ -58,16 +64,23 @@ async function runQuery(query) {
   const fields = pickFields(query);
   if (!fields) {
     return errorResponse([
-      "Unsupported query. Try `{ entries { id title slug status } }` or `{ entry(slug: \"…\") { id title slug status } }`.",
+      "Unsupported query. Try `{ entries(projectId: \"<project id>\") { id title slug status } }` or `{ entry(slug: \"…\", projectId: \"<project id>\") { id title slug status } }`.",
     ]);
   }
 
-  const singleMatch = query.match(/entry\s*\(\s*slug\s*:\s*"([^"]+)"\s*\)/);
+  // Every read is scoped to one project; slugs are only unique within a project.
+  const singleMatch = query.match(/\bentry\s*\(([^)]*)\)/);
   if (singleMatch) {
+    const slug = argument(singleMatch[1], "slug");
+    const projectId = argument(singleMatch[1], "projectId");
+    if (!slug || !isUuid(projectId)) {
+      return errorResponse(['Use `{ entry(slug: "…", projectId: "<project id>") { … } }`.']);
+    }
     const { data, error } = await sb
       .from("entries")
       .select("*")
-      .eq("slug", singleMatch[1])
+      .eq("project_id", projectId)
+      .eq("slug", slug)
       .eq("status", "Published")
       .is("deleted_at", null)
       .maybeSingle();
@@ -81,16 +94,18 @@ async function runQuery(query) {
   }
 
   if (/\bentries\b/.test(query)) {
-    const projectMatch = query.match(/entries\s*\(\s*projectId\s*:\s*"([^"]+)"\s*\)/);
-    let req = sb
+    const projectId = argument(query.match(/\bentries\s*\(([^)]*)\)/)?.[1], "projectId");
+    if (!isUuid(projectId)) {
+      return errorResponse(['Use `{ entries(projectId: "<project id>") { … } }`.']);
+    }
+    const { data, error } = await sb
       .from("entries")
       .select("*")
+      .eq("project_id", projectId)
       .eq("status", "Published")
       .is("deleted_at", null)
       .order("published_at", { ascending: false })
       .limit(50);
-    if (projectMatch) req = req.eq("project_id", projectMatch[1]);
-    const { data, error } = await req;
     if (error) {
       return errorResponse(["Failed to load entries."], 500);
     }
@@ -101,7 +116,7 @@ async function runQuery(query) {
   }
 
   return errorResponse([
-    "Unsupported query. Try `{ entries { id title slug status } }` or `{ entry(slug: \"…\") { id title slug status } }`.",
+    "Unsupported query. Try `{ entries(projectId: \"<project id>\") { id title slug status } }` or `{ entry(slug: \"…\", projectId: \"<project id>\") { id title slug status } }`.",
   ]);
 }
 

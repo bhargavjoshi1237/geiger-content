@@ -48,6 +48,8 @@ import {
   DATA_TYPE_FILTER_OPTIONS,
   DATA_TYPE_MAP,
   DATA_TYPES,
+  FIELD_KEY_PATTERN,
+  RESERVED_FIELD_KEYS,
   keyify,
   newId,
 } from "./constants";
@@ -59,7 +61,12 @@ const EMPTY_DRAFT = {
   localized: false,
   position: 0,
   validationText: "{}",
+  optionsText: "",
+  private: false,
 };
+
+const optionsOf = (validation) =>
+  Array.isArray(validation?.options) ? validation.options.join(", ") : "";
 
 function FieldDialog({ initial, position, onClose, onSave }) {
   const [draft, setDraft] = useState(() =>
@@ -71,6 +78,8 @@ function FieldDialog({ initial, position, onClose, onSave }) {
           localized: initial.localized,
           position: initial.position,
           validationText: JSON.stringify(initial.validation || {}, null, 2),
+          optionsText: optionsOf(initial.validation),
+          private: initial.metadata?.private === true,
         }
       : { ...EMPTY_DRAFT, position },
   );
@@ -89,13 +98,31 @@ function FieldDialog({ initial, position, onClose, onSave }) {
       toast.error("Validation rules must be valid JSON.");
       return;
     }
+    const key = draft.key.trim() || keyify(draft.label);
+    if (!FIELD_KEY_PATTERN.test(key)) {
+      toast.error("Keys start with a letter and use only letters, numbers and underscores.");
+      return;
+    }
+    if (RESERVED_FIELD_KEYS.includes(key)) {
+      toast.error(`"${key}" is reserved by the delivery API. Pick another key.`);
+      return;
+    }
+    if (draft.dataType === "enum") {
+      const options = draft.optionsText.split(",").map((o) => o.trim()).filter(Boolean);
+      if (!options.length) {
+        toast.error("Add at least one option for an enum field.");
+        return;
+      }
+      validation = { ...validation, options: [...new Set(options)] };
+    }
     onSave({
-      key: draft.key.trim() || keyify(draft.label),
+      key,
       label: draft.label.trim(),
       dataType: draft.dataType,
       localized: Boolean(draft.localized),
       position: Number(draft.position) || 0,
       validation,
+      metadata: { ...(initial?.metadata || {}), private: Boolean(draft.private) },
     });
     onClose();
   };
@@ -106,7 +133,8 @@ function FieldDialog({ initial, position, onClose, onSave }) {
           <DialogTitle>{initial ? "Edit field" : "New field"}</DialogTitle>
           <DialogDescription>
             Validation rules are JSON: e.g. {"{"} &quot;required&quot;: true,
-            &quot;maxLength&quot;: 120 {"}"}.
+            &quot;maxLength&quot;: 120 {"}"}. Media and reference fields accept
+            &quot;multiple&quot;: true.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
@@ -161,6 +189,39 @@ function FieldDialog({ initial, position, onClose, onSave }) {
                 <SelectContent>
                   <SelectItem value="no">No</SelectItem>
                   <SelectItem value="yes">Yes</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {draft.dataType === "enum" ? (
+              <Field label="Options" hint="Comma-separated, e.g. free, pro." className="sm:col-span-2">
+                <Input
+                  value={draft.optionsText}
+                  onChange={(e) => set("optionsText")(e.target.value)}
+                  placeholder="free, pro, enterprise"
+                />
+              </Field>
+            ) : (
+              <p className="text-xs text-text-secondary sm:col-span-2 sm:self-center">
+                {draft.dataType === "media"
+                  ? "Stores an asset id; delivered as { url, mime, width, height, alt }."
+                  : draft.dataType === "reference"
+                    ? "Delivered when the API request populates it."
+                    : "Delivered as-is through the delivery API."}
+              </p>
+            )}
+            <Field label="Delivery">
+              <Select
+                value={draft.private ? "private" : "public"}
+                onValueChange={(v) => set("private")(v === "private")}
+              >
+                <SelectTrigger>
+                  <SelectValue/>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Delivered</SelectItem>
+                  <SelectItem value="private">Private</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
@@ -328,6 +389,7 @@ export function FieldSchemasScreen() {
             {r.key} · position {r.position}
             {r.validation?.required ? " · required" : ""}
             {r.localized ? " · localized" : ""}
+            {r.metadata?.private ? " · private" : ""}
           </span>
         </div>
       ),

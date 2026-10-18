@@ -183,7 +183,7 @@ export function BanditsScreen() {
                             <span className="inline-flex shrink-0 items-center gap-1 text-sm tabular-nums">
                               <span className="text-text-secondary">{current}%</span>
                               <ArrowRight className="h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
-                              <span className={next > current ? "font-semibold text-emerald-400" : next < current ? "font-semibold text-red-400" : "font-semibold text-foreground"}>{next}%</span>
+                              <span className={next > current ? "font-semibold text-emerald-600 dark:text-emerald-400" : next < current ? "font-semibold text-red-600 dark:text-red-400" : "font-semibold text-foreground"}>{next}%</span>
                             </span>
                           </div>
                           <Progress value={next} className="h-1.5" />

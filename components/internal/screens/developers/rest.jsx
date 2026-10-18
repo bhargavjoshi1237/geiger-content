@@ -19,7 +19,7 @@ import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { CodeBlock } from "./code_block";
 
-// Static v1 delivery route inventory; "Planned" rows are Phase 2 contracts documented ahead of their handlers.
+// Static v1 + v2 delivery route inventory; "Planned" rows are Phase 2 contracts documented ahead of their handlers.
 const ENDPOINTS = [
   {
     id: "list-entries",
@@ -27,8 +27,8 @@ const ENDPOINTS = [
     path: "/api/content/v1/entries",
     title: "List published entries",
     state: "Planned",
-    description: "Newest-first published entries, optionally scoped to a project.",
-    exampleRequest: "GET /api/content/v1/entries?projectId=<uuid>&limit=25",
+    description: "Newest-first published entries, scoped to a required project.",
+    exampleRequest: "GET /api/content/v1/entries?project=<uuid>&limit=25",
     exampleResponse: `{
   "data": [{ "id": "…", "title": "Hello", "slug": "hello", "status": "Published" }],
   "page": { "limit": 25, "count": 1 }
@@ -41,7 +41,7 @@ const ENDPOINTS = [
     title: "Get entry by slug",
     state: "Planned",
     description: "Single published entry plus Cache-Control and tag revalidation.",
-    exampleRequest: "GET /api/content/v1/entries/hello-world",
+    exampleRequest: "GET /api/content/v1/entries/hello-world?project=<uuid>",
     exampleResponse: `{
   "data": { "id": "…", "title": "Hello", "slug": "hello-world", "body": "…" }
 }`,
@@ -64,12 +64,53 @@ const ENDPOINTS = [
     title: "GraphQL (v1 placeholder)",
     state: "Live",
     description:
-      "Hand-rolled placeholder supporting `{ entries { … } }` and `{ entry(slug:) { … } }`. Not a full spec.",
+      "Hand-rolled placeholder supporting `{ entries(projectId:) { … } }` and `{ entry(slug:, projectId:) { … } }`. Not a full spec.",
     exampleRequest: `POST /api/content/v1/graphql
-{ "query": "{ entries { id title slug status } }" }`,
+{ "query": "{ entries(projectId: \\"<uuid>\\") { id title slug status } }" }`,
     exampleResponse: `{
   "data": { "entries": [{ "id": "…", "title": "Hello" }] },
   "extensions": { "geigerGraphql": "v1-placeholder" }
+}`,
+  },
+  {
+    id: "v2-list",
+    method: "GET",
+    path: "/api/content/v2/projects/[projectId]/[apiPlural]",
+    title: "List entries (v2)",
+    state: "Live",
+    description: "Strapi v5 query syntax — filters, sort, fields, populate, pagination, locale.",
+    exampleRequest:
+      "GET /api/content/v2/projects/<uuid>/articles?filters[title][$containsi]=guide&sort=publishedAt:desc&pagination[page]=1&pagination[pageSize]=25",
+    exampleResponse: `{
+  "data": [{ "id": "…", "title": "Guide to X", "slug": "guide-to-x", "publishedAt": "…" }],
+  "meta": { "pagination": { "page": 1, "pageSize": 25, "pageCount": 1, "total": 1 } }
+}`,
+  },
+  {
+    id: "v2-single",
+    method: "GET",
+    path: "/api/content/v2/projects/[projectId]/[apiPlural]/[idOrSlug]",
+    title: "Get entry by id or slug (v2)",
+    state: "Live",
+    description: "Single entry by id or slug, scoped to the project and content type.",
+    exampleRequest: "GET /api/content/v2/projects/<uuid>/articles/guide-to-x",
+    exampleResponse: `{
+  "data": { "id": "…", "title": "Guide to X", "slug": "guide-to-x" },
+  "meta": {}
+}`,
+  },
+  {
+    id: "v2-schema",
+    method: "GET",
+    path: "/api/content/v2/projects/[projectId]/_schema",
+    title: "Content-type schema (v2)",
+    state: "Live",
+    description:
+      "Content-type schema for the project; add ?format=ts for TypeScript. Requires a bearer token with schema:read.",
+    exampleRequest: `GET /api/content/v2/projects/<uuid>/_schema
+Authorization: Bearer <token>`,
+    exampleResponse: `{
+  "contentTypes": [{ "apiPlural": "articles", "fields": [{ "name": "title", "type": "string" }] }]
 }`,
   },
   {
@@ -122,7 +163,7 @@ export function RestApiScreen() {
 
   const stats = useMemo(
     () => [
-      { label: "Endpoints", value: String(ENDPOINTS.length), footer: "v1 delivery surface" },
+      { label: "Endpoints", value: String(ENDPOINTS.length), footer: "v1 + v2 delivery surface" },
       {
         label: "Live",
         value: String(ENDPOINTS.filter((e) => e.state === "Live").length),

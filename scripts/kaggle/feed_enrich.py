@@ -4,7 +4,8 @@
 # Fills two tables in Aiven for the crawled feed images (`content.feed_crawl_images`):
 #
 # 1. **Embeddings** — `nomic-embed-vision-v1.5` (768-d, same space as `nomic-embed-text-v1.5`) → `content.feed_image_embeddings`
-# 2. **Captions** — a small Qwen vision LLM writes a description + tags → `content.feed_image_captions`
+# 2. **Captions** — a small Qwen vision LLM writes a description, tags and feed labels (emotion, difficulty,
+#    sensitive themes) → `content.feed_image_captions`
 #
 # **One shared pool:** every copy of this notebook claims the next unclaimed images from the database
 # (`content.feed_enrich_leases`), so you can run it on several Kaggle accounts, Colab and a local GPU at the
@@ -32,10 +33,11 @@ TRANSFORMERS = "transformers>=4.57,<5"
 EMBED_BATCH = 64            # images per Nomic forward pass
 CAPTION_BATCH = 0           # images per generate() call; 0 = size it from free GPU memory (halves itself on OOM)
 CAPTION_MAX_SIDE = 448      # images are shrunk to this longest side before captioning (fewer vision tokens)
-CAPTION_MAX_TOKENS = 160
+CAPTION_MAX_TOKENS = 240
 DOWNLOAD_THREADS = 64       # downloads are network-bound; the GPU waits on them, not the other way round
 MAX_HOURS = 11.5            # stop cleanly before Kaggle's 12 h limit (raise it for a local GPU)
 RETRY_FAILED = False        # True = also retry images that failed before (up to 3 attempts; deleted images never)
+RECAPTION_MISSING = False   # True = also re-caption done images captioned before the emotion/difficulty labels existed
 WORKER_NAME = ""            # shows up in the database; default is the platform + host name
 
 DB_URL = ""                 # leave empty to read the FEED_EMBED_DATABASE_URL secret / environment variable
@@ -119,23 +121,33 @@ class Db:
 
 # Still to do for `model` in `table`: no row yet (or a retryable failure). Images whose file is gone
 # (404/410 when embedding) are skipped everywhere: the Reddit post was deleted.
-def todo_filter(table):
+def assert_corpus_ready():
+    rows = Db().run("select id,status from content.feed_datasets where active", fetch=True)
+    if rows and rows[0][1] != "ready":
+        raise RuntimeError(f"Dataset {rows[0][0]} is {rows[0][1]}. Finish the crawl before generating embeddings.")
+
+
+def todo_filter(table, recaption=False):
+    # Recaption: a done caption without labels is redone, unless a redo already failed for it.
+    done = ("(x.status = 'done' and (x.data->>'emotion' is not null or x.metadata->>'recaption_error' is not null))"
+            if recaption and table == "feed_image_captions" else "x.status = 'done'")
     return f"""
       i.deleted_at is null
+      and not exists (select 1 from content.feed_datasets where active and status <> 'ready')
       and not exists (select 1 from content.feed_image_embeddings d where d.image_id = i.id and d.status = 'failed' and d.error in ('http 404', 'http 410'))
       and not exists (
         select 1 from content.{table} x
         where x.image_id = i.id and x.model = %(model)s
-          and (x.status = 'done' or not %(retry)s or x.attempts >= %(max_attempts)s))"""
+          and ({done} or (x.status <> 'done' and (not %(retry)s or x.attempts >= %(max_attempts)s))))"""
 
 
 # Claims up to n unclaimed images after a random starting point (so workers rarely collide); a claim held
 # by another worker is skipped by the unique (image_id, task) row, an expired one is taken over.
-def claim_sql(table):
+def claim_sql(table, recaption=False):
     return f"""
     with candidates as (
-      select i.id from content.feed_crawl_images i
-      where {todo_filter(table)}
+      select i.id from content.feed_active_images i
+      where {todo_filter(table, recaption)}
         and i.id > %(start)s::uuid
         and not exists (select 1 from content.feed_enrich_leases l where l.image_id = i.id and l.task = %(task)s and l.lease_until > now())
       order by i.id limit %(n)s
@@ -146,19 +158,19 @@ def claim_sql(table):
         where content.feed_enrich_leases.lease_until < now()
       returning image_id
     )
-    select i.id::text, i.image_url, coalesce(i.record->>'title', '') from content.feed_crawl_images i
+    select i.id::text, i.image_url, coalesce(i.record->>'title', '') from content.feed_active_images i
     join claimed c on c.image_id = i.id order by i.id
     """
 
 
-def remaining(db, table, model):
-    sql = f"select count(*) from content.feed_crawl_images i where {todo_filter(table)}"
+def remaining(db, table, model, recaption=False):
+    sql = f"select count(*) from content.feed_active_images i where {todo_filter(table, recaption)}"
     return db.run(sql, {"model": model, "retry": RETRY_FAILED, "max_attempts": MAX_ATTEMPTS}, fetch=True)[0][0]
 
 
-def claimed_batches(db, table, model, chunk, worker):
+def claimed_batches(db, table, model, chunk, worker, recaption=False):
     """Yields lists of (image_id, url, title) claimed from the shared pool until it is empty (or time runs out)."""
-    sql = claim_sql(table)
+    sql = claim_sql(table, recaption)
     task = f"{'embed' if table == 'feed_image_embeddings' else 'caption'}:{model}"
     misses = 0
     while not out_of_time():
@@ -171,7 +183,7 @@ def claimed_batches(db, table, model, chunk, worker):
             continue
         misses += 1
         if misses >= 2:  # nothing after a random start nor from the beginning
-            if remaining(db, table, model) == 0:
+            if remaining(db, table, model, recaption) == 0:
                 return
             time.sleep(30)  # everything left is claimed by other workers; wait for their claims to finish or expire
             misses = 0
@@ -193,9 +205,9 @@ def download(url, max_side=512):
         return None, f"{type(e).__name__}: {e}"[:200]
 
 
-def prefetched(db, table, model, chunk, max_side, pool, worker):
+def prefetched(db, table, model, chunk, max_side, pool, worker, recaption=False):
     """Claimed batches, downloading the next one while the caller works on the current one → (ok, bad)."""
-    source = claimed_batches(db, table, model, chunk, worker)
+    source = claimed_batches(db, table, model, chunk, worker, recaption)
     submit = lambda rows: [(row, pool.submit(download, row[1], max_side)) for row in rows]  # noqa: E731
     current = next(source, None)
     pending = submit(current) if current else None
@@ -213,8 +225,8 @@ def prefetched(db, table, model, chunk, max_side, pool, worker):
 class Progress:
     """This notebook's rate, plus the whole pool's rate and ETA from the database every minute."""
 
-    def __init__(self, label, table, model):
-        self.label, self.table, self.model = label, table, model
+    def __init__(self, label, table, model, recaption=False):
+        self.label, self.table, self.model, self.recaption = label, table, model, recaption
         self.done, self.failed, self.t0, self.last_pool = 0, 0, time.time(), 0
         self.lock = threading.Lock()
         self.db = Db()
@@ -227,7 +239,7 @@ class Progress:
             line = f"[{self.label}] this worker: {self.done:,} done · {self.failed:,} failed · {rate:.2f}/s"
             if time.time() - self.last_pool > 60:
                 self.last_pool = time.time()
-                left = remaining(self.db, self.table, self.model)
+                left = remaining(self.db, self.table, self.model, self.recaption)
                 recent = self.db.run(f"select count(*) from content.{self.table} where model = %s and updated_at > now() - interval '10 minutes'",
                                      (self.model,), fetch=True)[0][0]
                 pool_rate = recent / 600
@@ -318,6 +330,7 @@ def run_embeddings():
 
 
 if RUN_EMBED:
+    assert_corpus_ready()
     run_embeddings()
 
 # %%
@@ -330,7 +343,24 @@ Reply with JSON only, no other text:
  "subjects": ["main objects, animals or people"],
  "setting": "place or context",
  "style": "photo | screenshot | meme | artwork | diagram | other",
- "text": "any readable text in the image, or an empty string"}}"""
+ "text": "any readable text in the image, or an empty string",
+ "emotion": "the main feeling it gives a viewer: amused | amazed | moved | curious | sad | angry | disgusted | neutral",
+ "emotion_intensity": 1 to 5 (how strongly it evokes that feeling: 1 faint, 5 overwhelming),
+ "difficulty": 1 to 5 (prior knowledge needed to appreciate it: 1 casual, no prior knowledge; 5 expert-level),
+ "bloom": "remember | understand | apply | analyze | evaluate | create | none",
+ "sensitive": ["only those that clearly apply, usually none: self-harm | gore | violence | body-image | harassment | sexual | substance"]}}"""
+
+EMOTIONS = ("amused", "amazed", "moved", "curious", "sad", "angry", "disgusted", "neutral")
+BLOOM = ("remember", "understand", "apply", "analyze", "evaluate", "create", "none")
+SENSITIVE = ("self-harm", "gore", "violence", "body-image", "harassment", "sexual", "substance")
+
+# A failed redo of a done caption is noted on the row so RECAPTION_MISSING does not claim it again.
+RECAPTION_FAILED_SQL = """
+update content.feed_image_captions c set metadata = c.metadata || jsonb_build_object('recaption_error', t.err),
+  worker = %(worker)s, updated_at = now()
+from unnest(%(ids)s::uuid[], %(errs)s::text[]) as t(id, err)
+where c.image_id = t.id and c.model = %(model)s and c.status = 'done'
+"""
 
 CAPTION_DONE_SQL = """
 insert into content.feed_image_captions (image_id, model, status, description, tags, data, worker)
@@ -341,6 +371,36 @@ on conflict (image_id, model) do update set status = 'done', description = exclu
   data = excluded.data, error = null, attempts = content.feed_image_captions.attempts + 1,
   worker = excluded.worker, updated_at = now()
 """
+
+
+def enum_label(value, allowed, default):
+    text = str(value or "").strip().lower().replace("_", "-").replace(" ", "-")
+    return text if text in allowed else default
+
+
+def level_label(value):
+    # 1..5 int from a number or a string like "3" / "3/5"; anything else is None.
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str):
+        match = re.search(r"-?\d+(?:\.\d+)?", value)
+        value = float(match.group(0)) if match else None
+    if not isinstance(value, (int, float)) or value != value:
+        return None
+    return int(round(max(1, min(5, value))))
+
+
+def feed_labels(data):
+    """Coerces the emotion / intensity / difficulty / bloom / sensitive labels to their enums (always present)."""
+    sensitive = data.get("sensitive")
+    sensitive = sensitive if isinstance(sensitive, list) else [sensitive] if isinstance(sensitive, str) else []
+    return {
+        "emotion": enum_label(data.get("emotion"), EMOTIONS, "neutral"),
+        "emotion_intensity": level_label(data.get("emotion_intensity")),
+        "difficulty": level_label(data.get("difficulty")),
+        "bloom": enum_label(data.get("bloom"), BLOOM, "none"),
+        "sensitive": list(dict.fromkeys(s for s in (enum_label(v, SENSITIVE, None) for v in sensitive) if s)),
+    }
 
 
 def parse_caption(raw):
@@ -360,6 +420,7 @@ def parse_caption(raw):
     tags = list(dict.fromkeys(str(t).strip().lower()[:40] for t in tags if str(t).strip()))[:12]
     if not data:
         data = {"raw": text[:1000]}
+    data.update(feed_labels(data))
     return description[:600], tags, data
 
 
@@ -452,7 +513,8 @@ def caption_worker(captioner, model_tag, worker, progress):
     db = Db()
     base = {"model": model_tag, "worker": worker}
     with ThreadPoolExecutor(DOWNLOAD_THREADS // 2) as pool:
-        for ok, bad in prefetched(db, "feed_image_captions", model_tag, max(32, captioner.batch * 3), CAPTION_MAX_SIDE, pool, worker):
+        for ok, bad in prefetched(db, "feed_image_captions", model_tag, max(32, captioner.batch * 3), CAPTION_MAX_SIDE, pool, worker,
+                                  RECAPTION_MISSING):
             rows = []
             i = 0
             while i < len(ok):
@@ -474,19 +536,22 @@ def caption_worker(captioner, model_tag, worker, progress):
             if rows:
                 db.run(CAPTION_DONE_SQL, {**base, "rows": json.dumps(rows)})
             if bad:
-                db.run(FAILED_SQL.format(table="feed_image_captions"), {**base, "ids": [b[0] for b in bad], "errs": [b[1] for b in bad]})
+                failed = {**base, "ids": [b[0] for b in bad], "errs": [b[1] for b in bad]}
+                db.run(FAILED_SQL.format(table="feed_image_captions"), failed)
+                if RECAPTION_MISSING:
+                    db.run(RECAPTION_FAILED_SQL, failed)
             progress.add(len(rows), len(bad))
 
 
 def run_captions():
     db = Db()
     model_tag = CAPTION_MODEL
-    if not remaining(db, "feed_image_captions", model_tag):
+    if not remaining(db, "feed_image_captions", model_tag, RECAPTION_MISSING):
         print("captions: nothing left to do")
         return
     # Two probe images decide the precision before anything is written (they are captioned again later).
     probe = []
-    probe_sql = f"select i.id::text, i.image_url, coalesce(i.record->>'title', '') from content.feed_crawl_images i where {todo_filter('feed_image_captions')} order by random() limit 12"
+    probe_sql = f"select i.id::text, i.image_url, coalesce(i.record->>'title', '') from content.feed_active_images i where {todo_filter('feed_image_captions', RECAPTION_MISSING)} order by random() limit 12"
     for image_id, url, title in db.run(probe_sql, {"model": model_tag, "retry": RETRY_FAILED, "max_attempts": MAX_ATTEMPTS}, fetch=True):
         img, _ = download(url, CAPTION_MAX_SIDE)
         if img is not None:
@@ -494,9 +559,9 @@ def run_captions():
         if len(probe) == 2:
             break
     model_tag, captioners = load_captioners(probe)
-    print(f"captions with {model_tag}: {remaining(db, 'feed_image_captions', model_tag):,} images left in the pool; "
+    print(f"captions with {model_tag}: {remaining(db, 'feed_image_captions', model_tag, RECAPTION_MISSING):,} images left in the pool; "
           f"{len(captioners)} worker(s) here, batch {captioners[0].batch}", flush=True)
-    progress = Progress("caption", "feed_image_captions", model_tag)
+    progress = Progress("caption", "feed_image_captions", model_tag, RECAPTION_MISSING)
     threads = [threading.Thread(target=caption_worker, args=(c, model_tag, f"{WORKER}-gpu{k}", progress)) for k, c in enumerate(captioners)]
     for t in threads:
         t.start()
@@ -505,6 +570,7 @@ def run_captions():
 
 
 if RUN_CAPTIONS:
+    assert_corpus_ready()
     run_captions()
 
 # %%
@@ -515,7 +581,7 @@ select 'embeddings' as kind, model, status, count(*) from content.feed_image_emb
 union all
 select 'captions', model, status, count(*) from content.feed_image_captions group by 1, 2, 3
 order by 1, 2, 3""", fetch=True)
-total = db.run("select count(*) from content.feed_crawl_images where deleted_at is null", fetch=True)[0][0]
+total = db.run("select count(*) from content.feed_active_images", fetch=True)[0][0]
 print(f"crawled images: {total:,}")
 for kind, model, status, n in rows:
     print(f"  {kind:<10} {model:<32} {status:<6} {n:,}")

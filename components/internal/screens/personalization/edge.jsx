@@ -82,7 +82,7 @@ export function EdgeScreen() {
         </SectionCard>
         <SectionCard title="Decision" description="Winning entry, variant and the human-readable explanation.">
           {error ? (
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           ) : !result ? (
             <p className="text-sm text-text-secondary">Run a decision to see the result here.</p>
           ) : (

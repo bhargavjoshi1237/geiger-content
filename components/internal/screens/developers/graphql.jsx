@@ -16,24 +16,30 @@ import { LoadingArea } from "@geiger/ui";
 import { Badge } from "@geiger/ui/badge";
 import { Button } from "@geiger/ui/button";
 import { Textarea } from "@geiger/ui/textarea";
+import { useProject } from "@/context/project-context";
 import { CodeBlock } from "./code_block";
 
 // Tester for the hand-rolled v1 GraphQL placeholder (app/api/content/v1/graphql) — only two shapes resolve, the rest return `errors`.
-const SAMPLES = [
-  {
-    label: "List entries",
-    query: "{ entries { id title slug status } }",
-  },
-  {
-    label: "Single entry",
-    query: '{ entry(slug: "hello-world") { id title slug status excerpt } }',
-  },
-];
+const buildSamples = (projectId) => {
+  const id = projectId || "<project id>";
+  return [
+    {
+      label: "List entries",
+      query: `{ entries(projectId: "${id}") { id title slug status } }`,
+    },
+    {
+      label: "Single entry",
+      query: `{ entry(slug: "hello-world", projectId: "${id}") { id title slug status excerpt } }`,
+    },
+  ];
+};
 
 const GRAPHQL_PATH = "/api/content/v1/graphql";
 
 export function GraphqlApiScreen() {
-  const [query, setQuery] = useState(SAMPLES[0].query);
+  const { projectId } = useProject();
+  const samples = useMemo(() => buildSamples(projectId), [projectId]);
+  const [query, setQuery] = useState(() => buildSamples(projectId)[0].query);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -131,12 +137,12 @@ export function GraphqlApiScreen() {
         <SectionCard
 
           title="Query"
-          description="Only `{ entries { … } }` and `{ entry(slug:) { … } }` resolve."
+          description="Only `{ entries(projectId:) { … } }` and `{ entry(slug:, projectId:) { … } }` resolve."
         >
           <div className="grid gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-text-secondary">Samples</span>
-              {SAMPLES.map((s) => (
+              {samples.map((s) => (
                 <Button
                   key={s.label}
                   variant="outline"

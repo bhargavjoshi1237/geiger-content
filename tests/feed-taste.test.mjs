@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildTopicLinks, composeFeed, createRng, createUserState, indexCatalog, markShown, recordEvent } from "../lib/feed/engine.mjs";
-import { PERSONAS, runSimulation, similarFromMemory, syntheticCatalog, syntheticEmbeddings } from "../lib/feed/simulator.mjs";
-import { createTaste, dot, nearestInMemory, normalize, recordTaste, similarCandidates, TASTE_CONFIG, tasteQuery, tasteSearches } from "../lib/feed/taste.mjs";
-import { loadTaxonomy } from "../lib/feed/taxonomy/index.mjs";
+import { LEGACY_PERSONAS as PERSONAS, runSimulation, similarFromMemory, syntheticCatalog, syntheticEmbeddings } from "../lib/feed/simulator.mjs";
+import { createTaste, dot, mergeTasteConfig, nearestInMemory, normalize, recordTaste, similarCandidates, TASTE_CONFIG, tasteQuery, tasteSearches } from "../lib/feed/taste.mjs";
+import { loadLegacyTaxonomy as loadTaxonomy } from "../lib/feed/taxonomy/index.mjs";
 
 const topics = loadTaxonomy().filter((t) => t.pool === "main");
 const items = syntheticCatalog(topics, { perHorizontal: 6, now: Date.parse("2026-09-30") });
@@ -104,4 +104,68 @@ test("with embeddings the feed keeps every spacing rule and adapts faster to a s
     hybrid += runSimulation({ persona: persona("shifting-taste"), index, batches: 60, seed, embeddings }).metrics.engagementLate;
   }
   assert.ok(hybrid > tree, `late engagement tree ${tree.toFixed(3)} vs hybrid ${hybrid.toFixed(3)}`);
+});
+
+test("mergeTasteConfig applies partial channel overrides over the defaults", () => {
+  assert.equal(mergeTasteConfig(), TASTE_CONFIG);
+  assert.equal(mergeTasteConfig({}), TASTE_CONFIG);
+  const fast = mergeTasteConfig({ short: { halfLifeMs: 20 * 60000 } });
+  assert.equal(fast.short.halfLifeMs, 20 * 60000);
+  assert.equal(fast.short.eventDecay, TASTE_CONFIG.short.eventDecay);
+  assert.deepEqual(fast.long, TASTE_CONFIG.long);
+  assert.equal(fast.readyWeight, TASTE_CONFIG.readyWeight);
+  const taste = createTaste();
+  const now = Date.parse("2026-09-01");
+  for (const item of items.filter((i) => i.topicId === "dogs").slice(0, 6)) recordTaste(taste, embeddings.get(item.id), { type: "like" }, { topicId: "dogs", now, config: { long: { eventDecay: 0.99 } } });
+  assert.equal(tasteQuery(taste, { now, config: { short: { halfLifeMs: 60000 } } }).interests[0].topicId, "dogs");
+});
+
+test("a route's liking overrides tasteSignal and matches the legacy like", () => {
+  const now = Date.parse("2026-09-01");
+  const dogs = items.filter((i) => i.topicId === "dogs").slice(0, 4);
+  const legacy = createTaste();
+  const routed = createTaste();
+  for (const item of dogs) {
+    recordTaste(legacy, embeddings.get(item.id), { type: "like" }, { topicId: "dogs", now });
+    recordTaste(routed, embeddings.get(item.id), { type: "like" }, { topicId: "dogs", now, liking: { long: 1.2, short: 1.2, negative: 0 } });
+  }
+  assert.deepEqual(routed, legacy);
+  const gated = structuredClone(routed);
+  recordTaste(gated, embeddings.get(dogs[0].id), { type: "like" }, { topicId: "dogs", now, liking: null });
+  assert.deepEqual(gated.topics, routed.topics, "a null liking (e.g. a gated like) moves no channel");
+  assert.equal(gated.events, routed.events + 1);
+});
+
+test("negative liking subtracts with a floor at zero; the negative channel adds", () => {
+  const now = Date.parse("2026-09-01");
+  const [a, b] = items.filter((i) => i.topicId === "dogs");
+  const taste = createTaste();
+  recordTaste(taste, embeddings.get(a.id), { type: "like" }, { topicId: "dogs", now, liking: { long: 1, short: 0.5, negative: 0 } });
+  recordTaste(taste, embeddings.get(b.id), { type: "skip" }, { topicId: "dogs", now, liking: { long: 0, short: -0.3, negative: 0 } });
+  assert.ok(Math.abs(taste.short.w - 0.2) < 1e-9, `short ${taste.short.w}`);
+  recordTaste(taste, embeddings.get(b.id), { type: "skip" }, { topicId: "dogs", now, liking: { long: 0, short: -5, negative: 0 } });
+  assert.equal(taste.short, null, "a channel never goes below zero weight");
+  recordTaste(taste, embeddings.get(b.id), { type: "hide" }, { topicId: "dogs", now, liking: { long: 0, short: 0, negative: 3 } });
+  assert.ok(taste.negative.w > 2.9);
+});
+
+test("sign -1 undoes a liking: one like undone leaves the earlier one, both undone clear the channel", () => {
+  const now = Date.parse("2026-09-01");
+  const [a, b] = items.filter((i) => i.topicId === "dogs");
+  const liking = { long: 1.2, short: 1.2, negative: 0 };
+  const once = createTaste();
+  recordTaste(once, embeddings.get(a.id), { type: "like" }, { topicId: "dogs", now, liking });
+  const taste = structuredClone(once);
+  recordTaste(taste, embeddings.get(b.id), { type: "like" }, { topicId: "dogs", now, liking });
+  recordTaste(taste, embeddings.get(b.id), { type: "like" }, { topicId: "dogs", now, liking, sign: -1 });
+  assert.equal(taste.events, once.events);
+  assert.ok(Math.abs(taste.topics.dogs.w - once.topics.dogs.w) < 1e-9);
+  assert.ok(dot(normalize(taste.topics.dogs.v), embeddings.get(a.id)) > 0.999, "the vector points back at the first like");
+  recordTaste(taste, embeddings.get(a.id), { type: "like" }, { topicId: "dogs", now, liking, sign: -1 });
+  assert.equal(taste.topics.dogs, undefined);
+  assert.equal(taste.short, null);
+  const hidden = createTaste();
+  recordTaste(hidden, embeddings.get(a.id), { type: "hide" }, { topicId: "dogs", now, liking: { long: 0, short: 0, negative: 2.5 } });
+  recordTaste(hidden, embeddings.get(a.id), { type: "hide" }, { topicId: "dogs", now, liking: { long: 0, short: 0, negative: -2.5 } });
+  assert.equal(hidden.negative, null, "an inverted liking undoes a hide too");
 });

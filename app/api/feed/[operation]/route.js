@@ -2,7 +2,7 @@ import { vectorContext, vectorResponse, vectorFailure } from "@/lib/vector/serve
 import { VectorError, assertSameOrigin } from "@/lib/vector/auth.mjs";
 import { vectorPool } from "@/lib/vector/connection.mjs";
 import { createFeedVectors } from "@/lib/feed/vectors.mjs";
-import { createLiveFeed } from "@/lib/feed/live.mjs";
+import { createLiveFeed, FeedRequestError, FeedSettingsError, FeedSteeringError } from "@/lib/feed/live.mjs";
 import { QueryEmbeddingError } from "@/lib/feed/query-text.mjs";
 
 export const runtime = "nodejs";
@@ -18,8 +18,11 @@ function live() {
 }
 
 const profileName = (value) => String(value || "default").trim().slice(0, 40) || "default";
+const PROFILE_OPERATIONS = ["next", "events", "reset", "settings", "steering", "exclude", "probe"];
 
 function failure(error) {
+  if (error instanceof FeedSettingsError) return vectorFailure(new VectorError("invalid_settings", error.message, 400));
+  if (error instanceof FeedSteeringError || error instanceof FeedRequestError) return vectorFailure(new VectorError(error.code, error.message, error.status));
   if (error instanceof QueryEmbeddingError) return vectorFailure(new VectorError(error.code, error.message, error.code === "invalid_query" ? 400 : 503));
   return vectorFailure(error);
 }
@@ -56,11 +59,17 @@ export async function POST(request, { params }) {
       throw new VectorError("invalid_json", "Send a valid JSON request.");
     }
     const { vectors, feed } = live();
-    if (["next", "events", "reset"].includes(operation)) {
+    if (PROFILE_OPERATIONS.includes(operation)) {
       const row = await vectors.profile(ctx.projectId, ctx.user.id, profileName(body.profile));
       if (operation === "next") return vectorResponse(await feed.next(row));
       if (operation === "events") return vectorResponse(await feed.record(row.id, body.events));
-      await vectors.resetProfile(row.id);
+      if (operation === "settings") return vectorResponse(await feed.updateSettings(row.id, body.settings || {}));
+      if (operation === "steering") return vectorResponse(await feed.steering(row.id, { action: body.action, text: body.text, id: body.id }));
+      if (operation === "exclude") return vectorResponse(await feed.exclude(row.id, { scope: body.scope, id: body.id, on: body.on }));
+      if (operation === "probe") return vectorResponse(await feed.probe(row.id, { action: body.action, sub: body.sub }));
+      // Reset: everything (settings survive) or one scope (topic/subject, emotion, knowledge).
+      if (!body.scope || body.scope === "all") await vectors.resetProfile(row.id);
+      else await feed.scopedReset(row.id, { scope: body.scope, id: body.id });
       return vectorResponse(await feed.profile(ctx.projectId, ctx.user.id, row.name));
     }
     if (operation === "similar") return vectorResponse(await feed.similar(body.postId));

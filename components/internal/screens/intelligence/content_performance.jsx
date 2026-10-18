@@ -119,7 +119,7 @@ export function ContentPerformanceScreen() {
               <ul className="divide-y divide-border">
                 {d.underperforming.map((r) => (
                   <li key={r.t} className="flex min-w-0 items-start gap-3 py-3 first:pt-0 last:pb-0">
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400">
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
                       <AlertTriangle className="h-3.5 w-3.5" />
                     </span>
                     <div className="min-w-0">
@@ -145,7 +145,7 @@ export function ContentPerformanceScreen() {
                   header: "Trend",
                   align: "right",
                   render: (r) => (
-                    <span className={r.trend === "up" ? "inline-flex items-center gap-1 text-xs font-medium capitalize text-emerald-400" : "inline-flex items-center gap-1 text-xs font-medium capitalize text-red-400"}>
+                    <span className={r.trend === "up" ? "inline-flex items-center gap-1 text-xs font-medium capitalize text-emerald-600 dark:text-emerald-400" : "inline-flex items-center gap-1 text-xs font-medium capitalize text-red-600 dark:text-red-400"}>
                       {r.trend === "up" ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
                       {r.trend}
                     </span>

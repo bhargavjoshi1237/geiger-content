@@ -48,7 +48,7 @@ async function build() {
   }
   const check = new pg.Pool({ ...connectionOptions({ VECTOR_DATABASE_URL: url }), max: 1 });
   try {
-    const { rows } = await check.query("select count(*)::int as n from content.feed_crawl_images");
+    const { rows } = await check.query("select count(*)::int as n from content.feed_active_images");
     await check.query("select count(*) from content.feed_image_embeddings");
     log(`embedder login ok — sees ${rows[0].n.toLocaleString()} images`);
   } finally {

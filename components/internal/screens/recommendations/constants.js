@@ -12,6 +12,25 @@ export const FEED_SLOT_MAP = {
 
 export const FEED_SLOTS = Object.keys(FEED_SLOT_MAP);
 
+// Feed recency modes (lib/feed/engine.mjs RECENCY_PRESETS).
+export const FEED_RECENCY_MAP = {
+  balanced: { label: "Balanced", description: "Interest first; a tenth of each batch is the newest content." },
+  fresh: { label: "Fresh", description: "A quarter of each batch from the last 30 days; newer posts win ties." },
+  latest: { label: "Latest", description: "Nearly half of each batch from the last 7 days; the newest posts lead." },
+};
+
+export const FEED_RECENCY_TABS = Object.entries(FEED_RECENCY_MAP).map(([value, { label }]) => ({ value, label }));
+
+// "3h ago" / "5d ago" / "2mo ago" for a post timestamp.
+export function formatPostAge(iso, now = Date.now()) {
+  const hours = Math.max(0, (now - Date.parse(iso)) / 3600000);
+  if (!Number.isFinite(hours)) return null;
+  if (hours < 1) return "just now";
+  if (hours < 24) return `${Math.floor(hours)}h ago`;
+  if (hours < 24 * 60) return `${Math.floor(hours / 24)}d ago`;
+  return `${Math.floor(hours / 24 / 30)}mo ago`;
+}
+
 export const formatPercent = (value) => `${Math.round((Number(value) || 0) * 100)}%`;
 
 // Ranking rule state (Business Rules).

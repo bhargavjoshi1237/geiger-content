@@ -458,7 +458,7 @@ export function BlocksScreen() {
                       variant="ghost"
                       aria-label={`Remove instance of ${blockById[inst.blockId]?.name || "block"}`}
                       size="icon-sm"
-                      className="shrink-0 text-red-400 hover:bg-red-500/10 hover:text-red-400"
+                      className="shrink-0 text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-400"
                       onClick={() => handleRemoveInstance(inst)}
                     >
                       <Trash2 className="h-4 w-4" />

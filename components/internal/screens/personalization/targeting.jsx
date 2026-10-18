@@ -172,7 +172,7 @@ export function TargetingScreen() {
                       <Input id={`targeting-value-${i}`} value={row.value} onChange={(e) => setRow(i, { value: e.target.value })} placeholder="value" />
                     </Field>
                     <Button variant="ghost" size="icon" className="self-end justify-self-end" aria-label={`Remove clause ${i + 1}`} onClick={() => removeRow(i)}>
-                      <Trash2 className="h-4 w-4 text-red-400" />
+                      <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
                     </Button>
                   </div>
                 ))}

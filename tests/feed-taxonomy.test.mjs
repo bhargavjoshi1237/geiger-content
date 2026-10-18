@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { allSubreddits, flattenHorizontals, loadTaxonomy, SHAPE, validateTaxonomy } from "../lib/feed/taxonomy/index.mjs";
+import { allSubreddits, flattenHorizontals, loadLegacyTaxonomy as loadTaxonomy, LEGACY_SHAPE as SHAPE, validateTaxonomy } from "../lib/feed/taxonomy/index.mjs";
 import { parseTaxonomy, slugify } from "../lib/feed/taxonomy/parse.mjs";
 
 test("topic tree is 60 core + 8 personal topics (5×4×5) + 10 small edgy topics (3×4×3)", () => {
@@ -14,7 +14,7 @@ test("topic tree is 60 core + 8 personal topics (5×4×5) + 10 small edgy topics
 });
 
 test("every horizontal path is unique and steps are ordered by depth", () => {
-  const rows = flattenHorizontals();
+  const rows = flattenHorizontals(loadTaxonomy());
   assert.equal(new Set(rows.map((r) => r.horizontal.path)).size, rows.length);
   for (const topic of loadTaxonomy())
     for (const subtopic of topic.subtopics) assert.deepEqual(subtopic.steps.map((s) => s.depth), [1, 2, 3, 4]);
@@ -47,6 +47,6 @@ test("parser reads dedicated subreddits, flair keywords and names with colons", 
 });
 
 test("tree names roughly a thousand subreddits to crawl", () => {
-  const subs = allSubreddits();
+  const subs = allSubreddits(loadTaxonomy());
   assert.ok(subs.length > 800 && subs.length < 1200, `got ${subs.length}`);
 });

@@ -42,6 +42,7 @@ import {
 
 const AVAILABLE_SCOPES = [
   "delivery:read",
+  "schema:read",
   "content:read",
   "content:write",
   "webhooks:write",

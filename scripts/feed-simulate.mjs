@@ -4,9 +4,22 @@
 import fs from "node:fs";
 import path from "node:path";
 import { buildTopicLinks, indexCatalog } from "../lib/feed/engine.mjs";
-import { DEFAULT_CORPUS_DIR, readManifest } from "../lib/feed/crawl/store.mjs";
 import { PERSONAS, catalogFromManifest, runSimulation, syntheticCatalog } from "../lib/feed/simulator.mjs";
 import { loadTaxonomy } from "../lib/feed/taxonomy/index.mjs";
+
+const DEFAULT_CORPUS_DIR = path.join(process.cwd(), "data", "feed-corpus");
+
+// Streams every record from a previously collected corpus's JSONL manifest parts, if any exist.
+function* readManifest(dir) {
+  const manifestDir = path.join(dir, "manifest");
+  if (!fs.existsSync(manifestDir)) return;
+  for (const name of fs.readdirSync(manifestDir).filter((f) => f.endsWith(".jsonl")).sort()) {
+    for (const line of fs.readFileSync(path.join(manifestDir, name), "utf8").split("\n")) {
+      if (!line.trim()) continue;
+      try { yield JSON.parse(line); } catch { /* skip a torn line */ }
+    }
+  }
+}
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {

@@ -33,10 +33,9 @@ import {
 } from "@/components/internal/screens/intelligence/charts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@geiger/ui/chart";
 import { useProject } from "@/context/project-context";
-import { FEED_SLOT_MAP, FEED_SLOTS, formatPercent } from "./constants";
+import { FEED_RECENCY_MAP, FEED_SLOT_MAP, FEED_SLOTS, formatPercent } from "./constants";
 
 const depthChartConfig = {
-  focusDepth: { label: "Known depth", color: "var(--chart-1)" },
   engaged: { label: "Engaged / batch", color: "var(--chart-2)" },
 };
 
@@ -48,7 +47,8 @@ function loadFeedModules() {
     import("@/lib/feed/simulator.mjs"),
   ]).then(([taxonomy, engine, simulator]) => {
     const topics = taxonomy.loadTaxonomy();
-    const index = engine.indexCatalog(simulator.syntheticCatalog(topics, { perHorizontal: 6 }), {
+    // Catalog dated up to the simulated start, so post ages (and the recency modes) are meaningful.
+    const index = engine.indexCatalog(simulator.syntheticCatalog(topics, { perHorizontal: 6, now: simulator.SIMULATION_START }), {
       topicLinks: engine.buildTopicLinks(topics),
     });
     const names = {};
@@ -56,14 +56,14 @@ function loadFeedModules() {
       names[t.id] = t.name;
       for (const s of t.subtopics) names[`${t.id}/${s.id}`] = `${t.name} › ${s.name}`;
     }
-    return { index, names, personas: simulator.PERSONAS, runSimulation: simulator.runSimulation };
+    return { index, names, personas: simulator.PERSONAS, runSimulation: simulator.runSimulation, recencyConfig: engine.recencyConfig };
   });
 }
 
-function simulate(lab, personaId, batches, seed) {
+function simulate(lab, personaId, batches, seed, recency) {
   const persona = lab.personas.find((p) => p.id === personaId) || lab.personas[0];
   const count = Math.min(150, Math.max(5, Number(batches) || 60));
-  return lab.runSimulation({ persona, index: lab.index, batches: count, seed: Number(seed) || 1 });
+  return lab.runSimulation({ persona, index: lab.index, batches: count, seed: Number(seed) || 1, config: lab.recencyConfig(recency) });
 }
 
 // Feed Lab: runs simulated readers through the blended feed to show how it discovers
@@ -71,21 +71,22 @@ function simulate(lab, personaId, batches, seed) {
 export function FeedLabScreen() {
   const [lab, setLab] = useState(null);
   const [running, setRunning] = useState(false);
-  const [personaId, setPersonaId] = useState("aio-to-custom-loops");
+  const [personaId, setPersonaId] = useState("anime-fan");
   const [batches, setBatches] = useState(60);
   const [seed, setSeed] = useState(42);
+  const [recency, setRecency] = useState("balanced");
   const [result, setResult] = useState(null);
   const { projectId } = useProject();
 
-  const run = useCallback((persona = personaId) => {
+  const run = useCallback((persona = personaId, mode = recency) => {
     if (!lab) return;
     setRunning(true);
     // Yield a frame so the button spinner paints before the simulation runs.
     setTimeout(() => {
-      setResult(simulate(lab, persona, batches, seed));
+      setResult(simulate(lab, persona, batches, seed, mode));
       setRunning(false);
     }, 16);
-  }, [batches, lab, personaId, seed]);
+  }, [batches, lab, personaId, recency, seed]);
 
   useEffect(() => {
     let alive = true;
@@ -93,7 +94,7 @@ export function FeedLabScreen() {
     loadFeedModules().then((modules) => {
       if (!alive) return;
       setLab(modules);
-      setResult(simulate(modules, "aio-to-custom-loops", 60, 42));
+      setResult(simulate(modules, "anime-fan", 60, 42, "balanced"));
     });
     return () => { alive = false; };
   }, []);
@@ -105,11 +106,12 @@ export function FeedLabScreen() {
   const stats = useMemo(() => {
     if (!metrics) return [];
     return [
-      { label: "Engagement", value: formatPercent(metrics.engagementLate), footer: `from ${formatPercent(metrics.engagementEarly)} at the start` },
-      { label: "Interest share", value: formatPercent(metrics.interestShareLate), footer: `from ${formatPercent(metrics.interestShareEarly)} — reader's topics` },
-      { label: "Circling index", value: metrics.circlingIndex.toFixed(2), footer: "Top-3 topic share of last 50 · lower is fresher" },
-      { label: "Topics per batch", value: metrics.distinctTopicsPerBatch.toFixed(1), footer: `Max run ${metrics.maxSameTopicRun} · ${metrics.sameHorizontalBackToBack + metrics.crowdedWindows} spacing breaks` },
-      { label: "Focus depth", value: metrics.focusDepthReached ? `${metrics.focusDepthReached} / 4` : "—", footer: `${metrics.probes.accepted}/${metrics.probes.shown} probes accepted` },
+      { label: "Engagement", value: formatPercent(metrics.engagementLate), hint: `from ${formatPercent(metrics.engagementEarly)} at the start` },
+      { label: "Interest share", value: formatPercent(metrics.interestShareLate), hint: `from ${formatPercent(metrics.interestShareEarly)} — reader's topics` },
+      { label: "Circling index", value: metrics.circlingIndex.toFixed(2), hint: "Top-3 topic share of last 50 · lower is fresher" },
+      { label: "Topics per batch", value: metrics.distinctTopicsPerBatch.toFixed(1), hint: `Max run ${metrics.maxSameTopicRun} · ${metrics.sameHorizontalBackToBack + metrics.crowdedWindows} spacing breaks` },
+      { label: "Impressions", value: metrics.impressions.toLocaleString(), hint: "Entertainment subjects are equally accessible" },
+      { label: "Median post age", value: metrics.medianAgeDays == null ? "—" : `${metrics.medianAgeDays}d`, hint: `${formatPercent(metrics.shareLastWeek)} from the last 7 days` },
     ];
   }, [metrics]);
 
@@ -126,13 +128,12 @@ export function FeedLabScreen() {
     },
     { key: "interest", header: "Engagement", align: "right", render: (s) => formatPercent(s.interest) },
     { key: "lift", header: "Lift", align: "right", render: (s) => `${s.lift.toFixed(2)}×` },
-    { key: "depth", header: "Known depth", align: "right", render: (s) => `${s.knowledgeDepth} / 4` },
   ];
 
   if (!lab) {
     return (
       <MainScreenWrapper>
-        <ScreenHeader title="Feed Lab" description="Simulate how the blended feed discovers a reader's interests and leads them deeper." />
+        <ScreenHeader title="Feed Lab" description="Simulate how the entertainment feed discovers a reader's interests." />
         <div className="flex justify-center py-16" role="status">
           <LogoLoading size={56} aria-label="Loading feed lab" />
         </div>
@@ -144,7 +145,7 @@ export function FeedLabScreen() {
     <MainScreenWrapper>
       <ScreenHeader
         title="Feed Lab"
-        description="Simulate how the blended feed discovers a reader's interests, leads them deeper, and stays fresh."
+        description="Simulate how the entertainment feed discovers interests, adapts to changes, and stays varied."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {projectId && (
@@ -158,7 +159,7 @@ export function FeedLabScreen() {
           </div>
         }
       />
-      {stats.length > 0 && <StatGrid stats={stats} columns={5} />}
+      {stats.length > 0 && <StatGrid stats={stats} columns={3} />}
       <SectionCard title="Simulation" description="Synthetic readers with hidden tastes scroll ten-item batches; the engine only sees their likes, saves, dwells and skips.">
         <div className="flex flex-wrap items-end gap-4">
           <Field label="Reader" hint={persona?.label} className="min-w-0 w-full sm:w-64">
@@ -166,6 +167,14 @@ export function FeedLabScreen() {
               <SelectTrigger aria-label="Reader"><SelectValue/></SelectTrigger>
               <SelectContent>
                 {lab.personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Recency" hint={FEED_RECENCY_MAP[recency].description} className="min-w-0 w-full sm:w-72">
+            <Select value={recency} onValueChange={(value) => { setRecency(value); run(personaId, value); }}>
+              <SelectTrigger aria-label="Recency"><SelectValue/></SelectTrigger>
+              <SelectContent>
+                {Object.entries(FEED_RECENCY_MAP).map(([value, mode]) => <SelectItem key={value} value={value}>{mode.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>
@@ -180,14 +189,13 @@ export function FeedLabScreen() {
       {result ? (
         <>
           <div className="grid gap-4 lg:grid-cols-3">
-            <SectionCard title="Depth funnel" description={persona?.focus ? `How deep the engine has led the reader in ${names[persona.focus] || persona.focus}.` : "This reader has no focus subtopic."} className="lg:col-span-2">
+            <SectionCard title="Engagement over time" description="Simulated outcomes per batch; validate these assumptions with real reader sessions." className="lg:col-span-2">
               <ChartContainer config={depthChartConfig} className="h-[260px] w-full">
                 <LineChart data={result.timeline} margin={{ left: -12, right: 8, top: 8 }}>
                   <CartesianGrid stroke={GRID_STROKE} strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="batch" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
                   <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} allowDecimals={false} />
                   <ChartTooltip content={<ChartTooltipContent/>} />
-                  <Line type="stepAfter" dataKey="focusDepth" stroke="var(--color-focusDepth)" strokeWidth={2.5} dot={false} />
                   <Line type="monotone" dataKey="engaged" stroke="var(--color-engaged)" strokeWidth={2} dot={false} />
                 </LineChart>
               </ChartContainer>

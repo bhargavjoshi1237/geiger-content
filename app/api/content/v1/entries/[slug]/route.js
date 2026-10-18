@@ -1,4 +1,5 @@
 import { publishedClient } from "@/lib/delivery/public";
+import { isUuid } from "@/lib/vector/auth.mjs";
 
 // Slug delivery shares the project-tagged published data cache.
 
@@ -29,7 +30,14 @@ export async function GET(request, context) {
   try {
     const { slug } = await context.params;
     const { searchParams } = new URL(request.url);
-    const project = searchParams.get("project");
+    const project = searchParams.get("project") || searchParams.get("projectId");
+    // Slugs are unique per project only; without one any tenant's published entry could match.
+    if (!isUuid(project)) {
+      return Response.json(
+        { error: "Pass ?project=<project id>." },
+        { status: 400, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     const sb = publishedClient({ projectId: project });
     if (!sb) {
       return Response.json(
@@ -43,7 +51,7 @@ export async function GET(request, context) {
       .eq("slug", slug)
       .eq("status", "Published")
       .is("deleted_at", null);
-    if (project) query = query.eq("project_id", project);
+    query = query.eq("project_id", project);
     const { data, error } = await query.maybeSingle();
     if (error || !data) {
       return Response.json(

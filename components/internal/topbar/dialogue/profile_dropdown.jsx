@@ -33,6 +33,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@geiger/ui/button";
 import { useOptionalProject } from "@/context/project-context";
 import { tabToSlug } from "@/lib/workspace/tabs";
+import { isPlaygroundActive } from "@/lib/playground/mode";
 
 const itemBaseStyle =
   "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm cursor-default transition-colors outline-none";
@@ -54,7 +55,8 @@ export function ProfileDropdown({ children, user: knownUser = null }) {
     });
   }, [knownUser]);
 
-  const pfpUrl = user?.id
+  // The playground's visitor has no uploaded photo; skip the storage request.
+  const pfpUrl = user?.id && !isPlaygroundActive()
     ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/pfp/${user.id}/latest.jpg`
     : null;
 
@@ -101,7 +103,7 @@ export function ProfileDropdown({ children, user: knownUser = null }) {
                   className="object-cover"
                 />
               )}
-              <AvatarFallback className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white text-[10px] font-semibold border-0">
+              <AvatarFallback className="bg-surface-card text-muted-foreground text-[10px] font-semibold border-0">
                 {initials}
               </AvatarFallback>
             </Avatar>
@@ -110,11 +112,11 @@ export function ProfileDropdown({ children, user: knownUser = null }) {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="w-72 overflow-hidden rounded-xl border border-border bg-surface-dialog p-0 text-foreground shadow-2xl"
+        className="w-72 overflow-hidden rounded-xl border border-border bg-background p-0 text-foreground shadow-xl"
         sideOffset={8}
         align="end"
       >
-        <div className="bg-surface-dialog p-4 pb-3">
+        <div className="p-4 pb-3">
           <DropdownMenuLabel className="p-0">
             <div className="flex items-center gap-3">
               <Avatar className="size-10 border border-border">
@@ -125,7 +127,7 @@ export function ProfileDropdown({ children, user: knownUser = null }) {
                     className="object-cover"
                   />
                 )}
-                <AvatarFallback className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white text-xs font-semibold border-0">
+                <AvatarFallback className="bg-surface-card text-muted-foreground text-xs font-semibold border-0">
                   {initials}
                 </AvatarFallback>
               </Avatar>
@@ -141,9 +143,9 @@ export function ProfileDropdown({ children, user: knownUser = null }) {
           </DropdownMenuLabel>
         </div>
 
-        <DropdownMenuSeparator className="mx-0 bg-border" />
+        <DropdownMenuSeparator className="mx-0 bg-surface-hover" />
 
-        <div className="bg-surface-dialog p-1.5">
+        <div className="p-1.5">
           <DropdownMenuGroup>
             <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
               <a href="/profile">
@@ -167,7 +169,7 @@ export function ProfileDropdown({ children, user: knownUser = null }) {
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
-          <DropdownMenuSeparator className="my-1 bg-border" />
+          <DropdownMenuSeparator className="my-1 bg-surface-hover" />
 
           <DropdownMenuGroup>
             <DropdownMenuItem className="hover:bg-transparent focus:bg-transparent p-2 cursor-default">
@@ -175,19 +177,19 @@ export function ProfileDropdown({ children, user: knownUser = null }) {
                 type="single"
                 value={theme}
                 onValueChange={(value) => { if (value) setTheme(value); }}
-                className="flex w-full items-center justify-evenly rounded-lg border border-border bg-surface-card p-0.5"
+                className="flex w-full items-center justify-evenly rounded-lg border border-border bg-surface-subtle p-0.5"
               >
                 <ToggleGroupItem
                   value="light"
                   aria-label="Light theme"
-                  className="h-7 flex-1 justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-surface-active hover:text-foreground data-[state=on]:bg-surface-hover data-[state=on]:text-foreground"
+                  className="h-7 flex-1 justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-surface-hover dark:hover:bg-surface-card hover:text-foreground data-[state=on]:bg-surface-active data-[state=on]:text-foreground"
                 >
                   <Sun className="size-3.5" />
                 </ToggleGroupItem>
                 <ToggleGroupItem
                   value="dark"
                   aria-label="Dark theme"
-                  className="h-7 flex-1 justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-surface-active hover:text-foreground data-[state=on]:bg-surface-hover data-[state=on]:text-foreground"
+                  className="h-7 flex-1 justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-surface-hover dark:hover:bg-surface-card hover:text-foreground data-[state=on]:bg-surface-active data-[state=on]:text-foreground"
                 >
                   <Moon className="size-3.5" />
                 </ToggleGroupItem>
@@ -213,7 +215,7 @@ export function ProfileDropdown({ children, user: knownUser = null }) {
             ) : null}
           </DropdownMenuGroup>
 
-          <DropdownMenuSeparator className="my-1 bg-border" />
+          <DropdownMenuSeparator className="my-1 bg-surface-hover" />
 
           <DropdownMenuGroup>
             <DropdownMenuItem asChild className={`${itemBaseStyle} ${itemHoverStyle}`}>
@@ -239,15 +241,15 @@ export function ProfileDropdown({ children, user: knownUser = null }) {
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={handleSignOut}
-              className={`${itemBaseStyle} hover:bg-destructive/10 focus:bg-destructive/10 text-muted-foreground hover:text-destructive focus:text-destructive group`}
+              className={`${itemBaseStyle} text-muted-foreground hover:bg-red-500/10 focus:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 focus:text-red-600 dark:focus:text-red-400 group`}
             >
-              <LogOut className="size-4 group-hover:text-red-400" />
+              <LogOut className="size-4 group-hover:text-red-600 dark:group-hover:text-red-400 group-focus:text-red-600 dark:group-focus:text-red-400" />
               <span>Sign out</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </div>
 
-        <div className="border-t border-border bg-surface-active px-4 py-2.5">
+        <div className="border-t border-border px-4 py-2.5">
           <div className="flex items-center justify-between text-[11px] text-text-secondary">
             <span>Content v1.0.0</span>
             <span className="flex items-center gap-1">

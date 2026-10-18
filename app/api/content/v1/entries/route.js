@@ -1,4 +1,5 @@
 import { publishedClient } from "@/lib/delivery/public";
+import { isUuid } from "@/lib/vector/auth.mjs";
 
 // Public delivery returns only published entries with a tagged 60-second data cache.
 
@@ -27,7 +28,14 @@ function normalize(row) {
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const project = searchParams.get("project");
+  const project = searchParams.get("project") || searchParams.get("projectId");
+  // Delivery is per tenant; without a project the published rows of every project would match.
+  if (!isUuid(project)) {
+    return Response.json(
+      { error: "Pass ?project=<project id>." },
+      { status: 400, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   const sb = publishedClient({ projectId: project });
   if (!sb) {
     return Response.json([], { headers: { "Cache-Control": CACHE } });
@@ -45,7 +53,7 @@ export async function GET(request) {
       .is("deleted_at", null)
       .order("published_at", { ascending: false, nullsFirst: false })
       .limit(limit);
-    if (project) query = query.eq("project_id", project);
+    query = query.eq("project_id", project);
     if (type) query = query.eq("type", type);
     const { data, error } = await query;
     if (error) {

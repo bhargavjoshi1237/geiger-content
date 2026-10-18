@@ -8,7 +8,18 @@ export const DATA_TYPE_MAP = {
   date: { label: "Date", variant: "purple" },
   reference: { label: "Reference", variant: "info" },
   richtext: { label: "Rich text", variant: "purple" },
+  enum: { label: "Enum", variant: "success" },
+  json: { label: "JSON", variant: "neutral" },
+  media: { label: "Media", variant: "info" },
 };
+
+// Keys the delivery API's entry envelope owns; a field can't use them.
+export const RESERVED_FIELD_KEYS = [
+  "id", "documentId", "slug", "locale", "type", "status", "publishedAt", "createdAt", "updatedAt", "meta", "localizations",
+];
+
+// Field keys travel in delivery filter paths, so they stay plain identifiers.
+export const FIELD_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
 export const DATA_TYPES = Object.keys(DATA_TYPE_MAP);
 
@@ -79,6 +90,13 @@ export function validateFieldValue(field, value) {
       return `${label} must be true or false.`;
     return "";
   }
+  if (type === "enum") {
+    const options = Array.isArray(rules.options) ? rules.options.map(String) : [];
+    if (options.length && !options.includes(String(value)))
+      return `${label} must be one of: ${options.join(", ")}.`;
+    return "";
+  }
+  if (type === "json" || type === "media") return "";
   const s = String(value);
   if (rules.minLength !== undefined && s.length < Number(rules.minLength))
     return `${label} needs at least ${rules.minLength} characters.`;

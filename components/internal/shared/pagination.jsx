@@ -94,7 +94,7 @@ function PageSizeSelect({ pageSize, options, onPageSizeChange }) {
           variant="outline"
           size="sm"
           aria-label="Rows Per Page"
-          className="rounded-lg border-border bg-surface-card px-2.5 text-xs font-medium text-foreground hover:bg-surface-subtle"
+          className="rounded-lg border-border bg-surface-card px-2.5 text-xs font-medium text-foreground hover:bg-surface-hover dark:hover:bg-surface-subtle"
         >
           <span className="tabular-nums">{pageSize}</span>
           <ChevronDown className="ml-0.5 h-3.5 w-3.5 text-text-secondary" />

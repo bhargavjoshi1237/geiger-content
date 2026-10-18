@@ -89,7 +89,7 @@ export function ContextRankScreen() {
             <Field label="Context (JSON)">
               <Textarea value={contextJson} onChange={(e) => setContextJson(e.target.value)} rows={4} className="font-mono text-xs" />
             </Field>
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
             <p className="text-xs text-text-tertiary">Try: change device to desktop and re-run — the mobile variant should drop out.</p>
           </div>
         </SectionCard>

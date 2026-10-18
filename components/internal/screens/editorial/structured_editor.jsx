@@ -25,6 +25,7 @@ import {
 } from "@geiger/ui/select";
 import { listContent, updateContent } from "@/lib/supabase/content";
 import { listContentTypes, listFieldsByType } from "@/lib/supabase/types";
+import { listAssets } from "@/lib/supabase/assets";
 import { createVersion, listVersionsByEntry } from "@/lib/supabase/locales";
 import { getUser } from "@/lib/supabase/user";
 import { useProject } from "@/context/project-context";
@@ -35,8 +36,79 @@ import { BodyEditor } from "./body_blocks";
 // Structured editing: entries.data against the entry type's field schema.
 // The fixed `body` column holds portable JSON ({ blocks }) as a text string
 // (no migration); legacy plain-text bodies parse to a single paragraph.
-function FieldInput({ field, value, onChange }) {
+
+// JSON fields edit as text and store parsed JSON once the text is valid.
+function JsonInput({ value, onChange }) {
+  const [text, setText] = useState(() =>
+    value === undefined || value === null ? "" : JSON.stringify(value, null, 2),
+  );
+  const [invalid, setInvalid] = useState(false);
+  return (
+    <>
+      <Textarea
+        value={text}
+        onChange={(e) => {
+          const next = e.target.value;
+          setText(next);
+          if (!next.trim()) {
+            setInvalid(false);
+            onChange(null);
+            return;
+          }
+          try {
+            onChange(JSON.parse(next));
+            setInvalid(false);
+          } catch {
+            setInvalid(true);
+          }
+        }}
+        rows={5}
+        className="font-mono text-xs"
+        placeholder='{ "key": "value" }'
+      />
+      {invalid ? <p className="mt-1 text-xs text-red-600 dark:text-red-400">Not valid JSON yet; the last valid value is kept.</p> : null}
+    </>
+  );
+}
+
+function FieldInput({ field, value, onChange, assets }) {
   const type = field.dataType || "text";
+  if (type === "enum") {
+    const options = Array.isArray(field.validation?.options) ? field.validation.options.map(String) : [];
+    return (
+      <Select value={value ? String(value) : ""} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder={options.length ? "Select…" : "No options defined"} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o} value={o}>
+              {o}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+  if (type === "json") {
+    return <JsonInput value={value} onChange={onChange} />;
+  }
+  if (type === "media") {
+    return (
+      <Select value={typeof value === "string" ? value : ""} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder={assets.length ? "Select an asset…" : "No assets in this project"} />
+        </SelectTrigger>
+        <SelectContent>
+          {assets.map((a) => (
+            <SelectItem key={a.id} value={a.id}>
+              {a.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
   if (type === "boolean") {
     return (
       <Select
@@ -116,6 +188,7 @@ function matchType(typeList, entry) {
 export function StructuredEditorScreen() {
   const [entries, setEntries] = useState([]);
   const [types, setTypes] = useState([]);
+  const [assets, setAssets] = useState([]);
   const [entryId, setEntryId] = useState("");
   const [fields, setFields] = useState([]);
   const [data, setData] = useState({});
@@ -140,6 +213,7 @@ export function StructuredEditorScreen() {
       },
     );
     getUser().then((u) => alive && setUserId(u?.id || null));
+    listAssets(projectId).then((rows) => alive && setAssets(rows ?? []));
     return () => {
       alive = false;
     };
@@ -323,9 +397,15 @@ export function StructuredEditorScreen() {
                     }
                   >
                     <div>
-                      <FieldInput field={f} value={data?.[f.key]} onChange={setValue(f.key)} />
+                      <FieldInput
+                        key={`${entryId}:${f.key}`}
+                        field={f}
+                        value={data?.[f.key]}
+                        onChange={setValue(f.key)}
+                        assets={assets}
+                      />
                       {errorFor(f.key) ? (
-                        <p className="mt-1 text-xs text-red-400">{errorFor(f.key)}</p>
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errorFor(f.key)}</p>
                       ) : null}
                     </div>
                   </Field>

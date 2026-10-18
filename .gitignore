@@ -44,6 +44,7 @@ next-env.d.ts
 /data/feed-corpus/
 /data/feed-fleet/
 /data/feed-embed/
+/data/feed-curation/
 
 # python bytecode
 __pycache__/

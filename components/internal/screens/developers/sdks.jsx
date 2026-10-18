@@ -20,7 +20,7 @@ const SNIPPETS = [
     id: "curl",
     title: "cURL",
     install: null,
-    code: `curl "https://your-app.example/api/content/v1/entries?limit=10" \\
+    code: `curl "https://your-app.example/api/content/v1/entries?project=<project id>&limit=10" \\
   -H "Authorization: Bearer <token>"`,
   },
   {
@@ -55,7 +55,13 @@ entries = client.entries.list(limit=10)`,
     install: null,
     code: `curl -X POST https://your-app.example/api/content/v1/graphql \\
   -H "Content-Type: application/json" \\
-  -d '{ "query": "{ entries { id title slug status } }" }'`,
+  -d '{ "query": "{ entries(projectId: \\"<project id>\\") { id title slug status } }" }'`,
+  },
+  {
+    id: "curl-v2",
+    title: "cURL (v2)",
+    install: null,
+    code: `curl -H "Authorization: Bearer $GEIGER_TOKEN" "https://your-app.example/api/content/v2/projects/<project id>/articles?filters[title][$containsi]=guide&sort=publishedAt:desc&pagination[pageSize]=10"`,
   },
 ];
 

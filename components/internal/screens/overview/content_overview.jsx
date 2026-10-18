@@ -115,7 +115,7 @@ function AttentionCard({ items, onOpen }) {
               type="button"
               variant="ghost"
               onClick={() => onOpen(item.tab)}
-              className="group h-auto min-w-0 justify-start gap-3.5 whitespace-normal rounded-xl p-3.5 text-left hover:bg-surface-card"
+              className="group h-auto min-w-0 justify-start gap-3.5 whitespace-normal rounded-xl p-3.5 text-left hover:bg-surface-hover dark:hover:bg-surface-card"
             >
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-card text-muted-foreground">
                 <Icon className="h-[18px] w-[18px]" />

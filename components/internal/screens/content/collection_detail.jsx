@@ -219,7 +219,7 @@ function ItemsSection({ collection, onChanged }) {
             {candidates.slice(0, 30).map((e) => (
               <li
                 key={e.id}
-                className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-surface-subtle"
+                className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-surface-hover dark:hover:bg-surface-subtle"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-foreground">

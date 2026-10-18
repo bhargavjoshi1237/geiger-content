@@ -34,7 +34,7 @@ const ENDPOINTS = [
     method: "GET",
     path: "/api/content/v1/entries",
     label: "List entries",
-    params: ["projectId", "limit"],
+    params: ["project", "limit"],
   },
   {
     key: "single",
@@ -52,14 +52,15 @@ const ENDPOINTS = [
   },
 ];
 
-const DEFAULT_QUERY = "{ entries { id title slug status } }";
+const buildDefaultQuery = (projectId) =>
+  `{ entries(projectId: "${projectId || "<project id>"}") { id title slug status } }`;
 
 export function ApiExplorerScreen() {
   const { projectId } = useProject();
   const [endpointKey, setEndpointKey] = useState("list");
   const [slug, setSlug] = useState("");
   const [limit, setLimit] = useState("25");
-  const [query, setQuery] = useState(DEFAULT_QUERY);
+  const [query, setQuery] = useState(() => buildDefaultQuery(projectId));
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -71,13 +72,16 @@ export function ApiExplorerScreen() {
   const previewUrl = useMemo(() => {
     if (endpoint.key === "list") {
       const qs = new URLSearchParams();
-      if (projectId) qs.set("projectId", projectId);
+      if (projectId) qs.set("project", projectId);
       if (limit) qs.set("limit", limit);
       const s = qs.toString();
       return `${endpoint.path}${s ? `?${s}` : ""}`;
     }
     if (endpoint.key === "single") {
-      return `/api/content/v1/entries/${slug.trim() || ":slug"}`;
+      const qs = new URLSearchParams();
+      if (projectId) qs.set("project", projectId);
+      const s = qs.toString();
+      return `/api/content/v1/entries/${slug.trim() || ":slug"}${s ? `?${s}` : ""}`;
     }
     return endpoint.path;
   }, [endpoint, projectId, limit, slug]);
@@ -161,7 +165,7 @@ export function ApiExplorerScreen() {
                 setResult(null);
                 setSlug("");
                 setLimit("25");
-                setQuery(DEFAULT_QUERY);
+                setQuery(buildDefaultQuery(projectId));
               }}
             >
               <RotateCcw className="h-4 w-4" /> Reset

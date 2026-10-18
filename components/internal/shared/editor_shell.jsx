@@ -100,8 +100,8 @@ function NavItem({ item, active, onSelect }) {
       className={cn(
         "h-auto w-full min-w-0 justify-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
         isActive
-          ? "bg-surface-card font-medium text-foreground"
-          : "text-muted-foreground hover:bg-surface-subtle hover:text-foreground",
+          ? "bg-muted font-medium text-foreground dark:bg-surface-card dark:hover:bg-surface-active"
+          : "text-muted-foreground hover:bg-surface-hover hover:text-foreground dark:hover:bg-surface-subtle",
       )}
     >
       {Icon ? (
