@@ -31,7 +31,7 @@
   "dependencies": {
     "@geiger/orm": "github:bhargavjoshi1237/geiger-orm#master",
     "@geiger/rbac": "github:bhargavjoshi1237/geiger-rbac#1835de3735cf9c86df5adebdbc7458dd4302e40d",
-    "@geiger/ui": "github:bhargavjoshi1237/geiger-ui#258dd6aa93dbf55262eb37055fcc5ef61da24a5b",
+    "@geiger/ui": "github:bhargavjoshi1237/geiger-ui#1e33dcdb1c62f35d1be6675fc95c9f6612d7d950",
     "@radix-ui/react-accordion": "^1.2.13",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
