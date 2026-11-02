@@ -20,9 +20,10 @@ import { Header } from "@/components/header";
 import ContentPlaygroundShowcase from "@/components/ContentPlaygroundShowcase";
 
 export const metadata = {
-  title: "Content - Geiger Studio",
+  title: "Geiger Content: create and manage content as a team",
   description:
     "Create, organize, and manage content with your team in Geiger Content.",
+  alternates: { canonical: "https://geiger.studio/content" },
 };
 
 // Suite-shared showcase backgrounds (same set as geiger-flow / geiger-forms).
