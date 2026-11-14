@@ -98,7 +98,10 @@ components/
   internal/sidebar/      Navigation — titles are the registry keys
   internal/shared/       Shared screen kit (headers, tables, stats, dialogs)
   landing/               Embeddable playground frame for landing pages
-lib/supabase/            Supabase client, config, user, and activity tracking
+lib/supabase/            Supabase client, activity tracking, and the per-area data layer
+lib/delivery/            Public delivery API (v1 REST/GraphQL, v2 per-type endpoints)
+lib/feed/                Feed ranking engine, signals, topic taxonomy, and simulator
+lib/vector/              Vector search, embeddings, and the background worker
 ```
 
 ## Conventions
