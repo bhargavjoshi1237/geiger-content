@@ -1,0 +1,25 @@
+/* Hero artwork: a printed article proof, inverted against the page so it reads as paper in both themes */
+.scene { display: flex; justify-content: center; padding-block: 8px; }
+/* The shadow lives on the wrapper because clip-path on the sheet would clip it */
+.paper { width: 300px; filter: drop-shadow(0 18px 22px rgb(0 0 0 / .3)); transform: rotate(2deg); }
+.sheet { position: relative; padding: 22px 22px 18px; border-radius: 4px; background: var(--foreground); color: var(--background); clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%); }
+/* Folded top-right corner */
+.sheet::after { content: ""; position: absolute; top: 0; right: 0; width: 24px; height: 24px; border-bottom-left-radius: 4px; background: linear-gradient(to bottom left, transparent 50%, color-mix(in oklab, var(--foreground) 82%, var(--background)) 50%); }
+.head { display: flex; align-items: center; justify-content: space-between; padding-right: 18px; font-family: var(--font-geist-mono), monospace; font-size: 11px; font-weight: 500; }
+.head > span:first-child { opacity: .65; }
+.locales { display: flex; gap: 4px; }
+.locales span { padding: 1px 5px; border: 1px solid color-mix(in oklab, var(--background) 35%, transparent); border-radius: 4px; font-size: 10px; opacity: .6; }
+.locales span[data-done] { border-color: var(--background); background: var(--background); color: var(--foreground); opacity: 1; }
+.title { margin-top: 22px; font-family: ui-serif, Georgia, "Times New Roman", serif; font-size: 25px; line-height: 1.12; letter-spacing: -0.01em; text-wrap: balance; }
+.body { margin-top: 14px; font-size: 13px; line-height: 1.6; opacity: .8; }
+.body mark { padding-inline: 2px; border-bottom: 1.5px solid currentColor; background: color-mix(in oklab, var(--background) 14%, transparent); color: inherit; }
+.body sup, .note sup { margin-left: 1px; font-family: var(--font-geist-mono), monospace; font-size: 9px; font-weight: 600; }
+/* The reviewer's comment, set as a footnote under a short rule */
+.note { position: relative; margin-top: 16px; padding-top: 12px; font-size: 12px; line-height: 1.5; }
+.note::before { content: ""; position: absolute; top: 0; left: 0; width: 48px; border-top: 1px solid color-mix(in oklab, var(--background) 45%, transparent); }
+.note sup { margin: 0 6px 0 0; }
+.foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; white-space: nowrap; padding-top: 12px; border-top: 1px dashed color-mix(in oklab, var(--background) 35%, transparent); font-family: var(--font-geist-mono), monospace; font-size: 11px; opacity: .7; }
+
+@media (max-width: 640px) {
+  .paper { width: 280px; }
+}

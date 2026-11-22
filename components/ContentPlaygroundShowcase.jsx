@@ -25,7 +25,7 @@ export default function ContentPlaygroundShowcase({
     >
       <div className="absolute inset-0 bg-background/75" />
       <div className="relative z-10 flex flex-col gap-6 sm:gap-10">
-        <div className="mx-auto mb-4 mt-4 flex w-[92%] flex-col items-start gap-4 sm:mb-6 sm:mt-6 sm:w-[90%]">
+        <div className="mx-auto mb-2 mt-2 flex w-[92%] flex-col items-start gap-4 sm:mb-4 sm:mt-0 sm:w-[90%]">
           <h3 className="text-3xl font-semibold leading-tight text-foreground">
             Try the full Content workspace in real time.
           </h3>

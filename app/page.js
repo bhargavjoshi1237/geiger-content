@@ -18,6 +18,7 @@ import {
 } from "@geiger/ui/accordion";
 import { Header } from "@/components/header";
 import ContentPlaygroundShowcase from "@/components/ContentPlaygroundShowcase";
+import HeroArticleProof from "@/components/landing/hero_article_proof";
 
 export const metadata = {
   title: "Geiger Content: create and manage content as a team",
@@ -116,7 +117,7 @@ export default function ContentLandingPage() {
       <Header />
 
       <main className="relative z-10 flex flex-1 flex-col pt-16 sm:pt-20">
-        <section className="mx-auto mb-10 mt-10 flex w-full max-w-6xl items-start justify-start px-4 sm:mt-16 sm:px-6">
+        <section className="mx-auto mt-8 grid w-full max-w-6xl items-center gap-8 px-4 sm:mt-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-16">
           <div className="max-w-3xl">
             <h1 className="mb-4 text-2xl font-semibold text-foreground sm:text-3xl">
               Create, organize, and move content through one connected workspace.
@@ -132,9 +133,10 @@ export default function ContentLandingPage() {
               </Link>
             </Button>
           </div>
+          <HeroArticleProof />
         </section>
 
-        <div className="mx-auto my-10 w-[94%] sm:my-20 md:w-[80%]">
+        <div className="mx-auto mb-10 mt-12 w-[94%] sm:mb-20 sm:mt-16 md:w-[80%]">
           <ContentPlaygroundShowcase backgroundImage={playgroundBg} />
         </div>
 
